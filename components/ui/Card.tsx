@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import { View, StyleSheet, StyleProp, ViewStyle, LayoutChangeEvent } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { Radius, Spacing } from '../../constants/spacing';
 
@@ -7,9 +7,10 @@ interface CardProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   variant?: 'surface' | 'neon' | 'secondary' | 'dark';
+  onLayout?: (event: LayoutChangeEvent) => void;
 }
 
-export const Card: React.FC<CardProps> = ({ children, style, variant = 'surface' }) => {
+export const Card: React.FC<CardProps> = ({ children, style, variant = 'surface', onLayout }) => {
   const getCardStyle = (): StyleProp<ViewStyle> => {
     const base: StyleProp<ViewStyle>[] = [styles.card];
     if (variant === 'neon') base.push(styles.neon);
@@ -19,7 +20,7 @@ export const Card: React.FC<CardProps> = ({ children, style, variant = 'surface'
     return base;
   };
 
-  return <View style={getCardStyle()}>{children}</View>;
+  return <View style={getCardStyle()} onLayout={onLayout}>{children}</View>;
 };
 
 const styles = StyleSheet.create({

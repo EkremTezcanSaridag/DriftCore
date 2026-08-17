@@ -7,10 +7,11 @@ import { Radius } from '../../constants/spacing';
 interface BadgeProps {
   label: string;
   variant?: 'cyan' | 'magenta' | 'amber' | 'violet' | 'gray';
+  icon?: React.ReactNode;
   style?: ViewStyle;
 }
 
-export const Badge: React.FC<BadgeProps> = ({ label, variant = 'cyan', style }) => {
+export const Badge: React.FC<BadgeProps> = ({ label, variant = 'cyan', icon, style }) => {
   const getBadgeStyle = (): ViewStyle[] => {
     const base: ViewStyle[] = [styles.badge];
     if (variant === 'cyan') base.push(styles.cyan);
@@ -24,6 +25,7 @@ export const Badge: React.FC<BadgeProps> = ({ label, variant = 'cyan', style }) 
 
   return (
     <View style={getBadgeStyle()}>
+      {icon}
       <Text style={styles.text}>{label}</Text>
     </View>
   );
@@ -31,6 +33,9 @@ export const Badge: React.FC<BadgeProps> = ({ label, variant = 'cyan', style }) 
 
 const styles = StyleSheet.create({
   badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: Radius.full,
