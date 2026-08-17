@@ -13,7 +13,13 @@ export const Config = {
   defaultPlayerConfig: {
     initialEnergy: 100,
     maxEnergy: 100,
-    baseSpeed: 5.0,
+    baseSpeed: 220,
     baseRotationSpeed: 3.5,
   },
+  gameplay: {
+    CORE_SPEED: 220, // Pixels per second
+    CORE_RADIUS: 16, // Core radius in pixels
+    SCORE_PER_SECOND: 10, // Points per second alive
+  },
 } as const;
+

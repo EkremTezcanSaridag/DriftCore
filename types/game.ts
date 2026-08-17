@@ -4,6 +4,7 @@
 
 export enum GameState {
   IDLE = 'IDLE',
+  READY = 'READY',
   COUNTDOWN = 'COUNTDOWN',
   PLAYING = 'PLAYING',
   PAUSED = 'PAUSED',
