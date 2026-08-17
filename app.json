@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "DriftCore",
+    "slug": "driftcore",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/ui/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "driftcore",
+    "splash": {
+      "image": "./assets/ui/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0F19"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.driftcore.game"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/ui/adaptive-icon.png",
+        "backgroundColor": "#0B0F19"
+      },
+      "package": "com.driftcore.game"
+    },
+    "web": {
+      "favicon": "./assets/ui/favicon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}
