@@ -24,5 +24,7 @@ export interface CollisionResult {
 export interface ICollisionSystem {
   checkCircleCollision(entityA: IEntity, entityB: IEntity): boolean;
   checkAABBCollision(boxA: BoundingBox, boxB: BoundingBox): boolean;
+  checkCircleAABBCollision(circlePos: Vector2D, circleRadius: number, box: BoundingBox): boolean;
+  checkCircleOutOfBounds(circlePos: Vector2D, circleRadius: number, arenaWidth: number, arenaHeight: number): boolean;
   resolveCollisions(entities: IEntity[]): CollisionResult[];
 }

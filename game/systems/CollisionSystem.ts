@@ -23,6 +23,25 @@ export class CollisionSystem implements ICollisionSystem {
     );
   }
 
+  public checkCircleAABBCollision(circlePos: Vector2D, circleRadius: number, box: BoundingBox): boolean {
+    const closestX = Math.max(box.x, Math.min(circlePos.x, box.x + box.width));
+    const closestY = Math.max(box.y, Math.min(circlePos.y, box.y + box.height));
+
+    const dx = circlePos.x - closestX;
+    const dy = circlePos.y - closestY;
+
+    return dx * dx + dy * dy <= circleRadius * circleRadius;
+  }
+
+  public checkCircleOutOfBounds(circlePos: Vector2D, circleRadius: number, arenaWidth: number, arenaHeight: number): boolean {
+    return (
+      circlePos.x - circleRadius <= 0 ||
+      circlePos.x + circleRadius >= arenaWidth ||
+      circlePos.y - circleRadius <= 0 ||
+      circlePos.y + circleRadius >= arenaHeight
+    );
+  }
+
   public resolveCollisions(entities: IEntity[]): CollisionResult[] {
     const results: CollisionResult[] = [];
     const activeEntities = entities.filter((e) => e.active);
