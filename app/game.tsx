@@ -13,29 +13,24 @@ import { GameHUD } from '../components/game/GameHUD';
 import { PauseModal } from '../components/game/PauseModal';
 import { GameOverModal } from '../components/game/GameOverModal';
 import { LevelCompleteModal } from '../components/game/LevelCompleteModal';
-import { Core } from '../components/game/Core';
-import { Obstacle } from '../components/game/Obstacle';
+import { CyberCar } from '../components/game/CyberCar';
+import { DriftAnchor } from '../components/game/DriftAnchor';
+import { LaserBeam } from '../components/game/LaserBeam';
+import { SkidMarks } from '../components/game/SkidMarks';
 import { Card } from '../components/ui/Card';
 import { Colors } from '../constants/colors';
 import { Typography } from '../constants/typography';
-import { Radius } from '../constants/spacing';
+import { Radius, Spacing } from '../constants/spacing';
 import { Config } from '../constants/config';
 import { useGameStore } from '../store/useGameStore';
 import { useLevelStore } from '../store/useLevelStore';
-import { GameState, Vector2D, BoundingBox } from '../types/game';
+import { GameState, Vector2D } from '../types/game';
+import { CyberCarState, DriftAnchor as DriftAnchorType, SkidMark } from '../types/physics';
 import { ILevel } from '../types/level';
 import { mainGameEngine } from '../game/core/GameEngine';
-import { collisionSystem } from '../game/systems/CollisionSystem';
+import { driftPhysicsSystem } from '../game/systems/DriftPhysicsSystem';
 import { LevelRegistry } from '../game/levels/LevelRegistry';
 import { saveService } from '../services/SaveService';
-
-// Heading directions in 90 degree clockwise rotation order: UP -> RIGHT -> DOWN -> LEFT
-const DIRECTIONS: Vector2D[] = [
-  { x: 0, y: -1 }, // UP
-  { x: 1, y: 0 },  // RIGHT
-  { x: 0, y: 1 },  // DOWN
-  { x: -1, y: 0 }, // LEFT
-];
 
 export default function GameScreen() {
   const router = useRouter();
@@ -67,23 +62,37 @@ export default function GameScreen() {
   // New High Score Flag for current session
   const [isNewHighScore, setIsNewHighScore] = useState(false);
 
-  // Core Render Position State
-  const [coreRenderPos, setCoreRenderPos] = useState<Vector2D>({ x: 0, y: 0 });
-  const [coreTrail, setCoreTrail] = useState<Vector2D[]>([]);
+  // Visual Render States (Synced from tick ref at 60 FPS)
+  const [carRenderState, setCarRenderState] = useState<CyberCarState>({
+    position: { x: 120, y: 550 },
+    velocity: { x: 0, y: -230 },
+    angle: 0,
+    speed: 230,
+    isHooked: false,
+    activeAnchorId: null,
+    orbitRadius: 0,
+    orbitAngle: 0,
+    orbitDirection: 1,
+    driftScoreMultiplier: 1,
+  });
 
-  // Static Obstacles list
-  const [obstacles, setObstacles] = useState<{ bounds: BoundingBox; color?: string }[]>([]);
+  const [anchors, setAnchors] = useState<DriftAnchorType[]>([]);
+  const [skidMarks, setSkidMarks] = useState<SkidMark[]>([]);
+  const [activeHookAnchor, setActiveHookAnchor] = useState<DriftAnchorType | null>(null);
+  const [perfectDriftText, setPerfectDriftText] = useState<string | null>(null);
 
-  // Mutable refs for high-frequency game engine tick updates
-  const corePosRef = useRef<Vector2D>({ x: 0, y: 0 });
-  const dirIndexRef = useRef<number>(0); // 0: UP, 1: RIGHT, 2: DOWN, 3: LEFT
+  // High-frequency mutable refs for 60 FPS physics tick loop
+  const carStateRef = useRef<CyberCarState>({ ...carRenderState });
+  const anchorsRef = useRef<DriftAnchorType[]>([]);
+  const skidMarksRef = useRef<SkidMark[]>([]);
+  const isHoldingTouchRef = useRef<boolean>(false);
   const scoreAccumulatorRef = useRef<number>(0);
-  const trailRef = useRef<Vector2D[]>([]);
-  const obstaclesRef = useRef<BoundingBox[]>([]);
   const arenaWidthRef = useRef<number>(0);
   const arenaHeightRef = useRef<number>(0);
   const gameStateRef = useRef<GameState>(GameState.READY);
   const currentLevelRef = useRef<ILevel>(currentLevel);
+  const isInitializedRef = useRef<boolean>(false);
+  const finishLineYRef = useRef<number>(50);
 
   // Sync refs
   useEffect(() => {
@@ -103,44 +112,67 @@ export default function GameScreen() {
     });
   }, [setHighScore]);
 
-  // Initialize Obstacles once Arena dimensions are measured
+  // Initialize Sling-Drift Game Session
   const initGameSession = useCallback(
     (width: number, height: number, level: ILevel) => {
-      if (width <= 0 || height <= 0) return;
+      if (width <= 50 || height <= 50) return;
 
       arenaWidthRef.current = width;
       arenaHeightRef.current = height;
+      finishLineYRef.current = Math.round(height * (level.finishLineYRatio ?? 0.08));
 
-      // Start Core at level initial position ratio
-      const startRatio = level.startPosRatio || { x: 0.5, y: 0.85 };
-      const startPos = {
+      // Calculate initial car start position
+      const startRatio = level.startPosRatio || { x: 0.3, y: 0.88 };
+      const startPos: Vector2D = {
         x: Math.round(width * startRatio.x),
         y: Math.round(height * startRatio.y),
       };
 
-      corePosRef.current = { ...startPos };
-      dirIndexRef.current = level.startDirectionIndex ?? 0; // Default UP
-      scoreAccumulatorRef.current = 0;
-      trailRef.current = [];
+      const startAngle = level.startAngle ?? 0;
+      const initialSpeed = Config.gameplay.CORE_SPEED || 230;
 
-      // Calculate deterministic static obstacles from level data
-      const relObstacles = level.obstacles || [];
-      const calculatedObstacles = relObstacles.map((rel) => ({
-        bounds: {
+      const initialCarState: CyberCarState = {
+        position: startPos,
+        velocity: { x: 0, y: -initialSpeed },
+        angle: startAngle,
+        speed: initialSpeed,
+        isHooked: false,
+        activeAnchorId: null,
+        orbitRadius: 0,
+        orbitAngle: 0,
+        orbitDirection: 1,
+        driftScoreMultiplier: 1,
+      };
+
+      // Calculate track anchors from relative level coordinates
+      const relAnchors = level.anchors || [];
+      const calculatedAnchors: DriftAnchorType[] = relAnchors.map((rel) => ({
+        id: rel.id,
+        name: rel.name,
+        position: {
           x: Math.round(width * rel.xRatio),
           y: Math.round(height * rel.yRatio),
-          width: Math.max(20, Math.round(width * rel.widthRatio)),
-          height: Math.max(20, Math.round(height * rel.heightRatio)),
         },
-        color: rel.color,
+        radius: rel.radius ?? 16,
+        activeRange: rel.activeRange ?? 150,
+        color: rel.color ?? Colors.secondary,
       }));
 
-      obstaclesRef.current = calculatedObstacles.map((o) => o.bounds);
-      setObstacles(calculatedObstacles);
-      setCoreRenderPos(startPos);
-      setCoreTrail([]);
+      carStateRef.current = { ...initialCarState };
+      anchorsRef.current = calculatedAnchors;
+      skidMarksRef.current = [];
+      isHoldingTouchRef.current = false;
+      scoreAccumulatorRef.current = 0;
+
+      setAnchors(calculatedAnchors);
+      setSkidMarks([]);
+      setActiveHookAnchor(null);
+      setCarRenderState(initialCarState);
       setScore(0);
       setIsNewHighScore(false);
+      setPerfectDriftText(null);
+
+      isInitializedRef.current = true;
       gameStateRef.current = GameState.PLAYING;
       setGameState(GameState.PLAYING);
     },
@@ -150,95 +182,155 @@ export default function GameScreen() {
   // Handle Arena Layout Measurement
   const handleArenaLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
-    if (width > 0 && height > 0) {
+    if (width > 50 && height > 50) {
       setArenaDimensions({ width, height });
       initGameSession(width, height, currentLevel);
     }
   };
 
-  // Tap Control: Turn Core 90 degrees Clockwise
-  const handleTapTurn = () => {
-    const currentStoreState = useGameStore.getState().gameState;
-    if (gameStateRef.current !== GameState.PLAYING && currentStoreState !== GameState.PLAYING) {
-      return;
-    }
+  // Touch Handlers for Sling-Drift Hook Action
+  const handleTouchDown = () => {
+    if (!isInitializedRef.current || gameStateRef.current !== GameState.PLAYING) return;
 
-    // Turn 90 degrees clockwise (UP -> RIGHT -> DOWN -> LEFT -> UP)
-    dirIndexRef.current = (dirIndexRef.current + 1) % DIRECTIONS.length;
+    isHoldingTouchRef.current = true;
+    const currentCar = carStateRef.current;
 
-    // Trigger subtle haptic feedback
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch {
-      // Haptics fallback
+    // Check if within reach of an anchor
+    const bestAnchor = driftPhysicsSystem.findBestAnchor(currentCar.position, anchorsRef.current);
+
+    if (bestAnchor) {
+      const hookedCar = driftPhysicsSystem.attachHook(currentCar, bestAnchor);
+      carStateRef.current = hookedCar;
+      setActiveHookAnchor(bestAnchor);
+      setCarRenderState({ ...hookedCar });
+
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch {}
     }
   };
 
-  // Main Game Loop Subscriber Tick
+  const handleTouchUp = () => {
+    if (!isInitializedRef.current) return;
+
+    isHoldingTouchRef.current = false;
+    const currentCar = carStateRef.current;
+
+    if (currentCar.isHooked) {
+      const releasedCar = driftPhysicsSystem.releaseHook(currentCar);
+      carStateRef.current = releasedCar;
+      setActiveHookAnchor(null);
+      setCarRenderState({ ...releasedCar });
+
+      // Perfect Drift feedback
+      setPerfectDriftText('PERFECT DRIFT! +50');
+      scoreAccumulatorRef.current += 50;
+      setTimeout(() => setPerfectDriftText(null), 1200);
+
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {}
+    }
+  };
+
+  // 60 FPS Main Game Loop Engine Tick
   useEffect(() => {
+    let skidFrameCounter = 0;
+
     const updateTick = (deltaTime: number) => {
-      if (gameStateRef.current !== GameState.PLAYING) return;
+      if (!isInitializedRef.current || gameStateRef.current !== GameState.PLAYING) return;
 
-      const speed = Config.gameplay.CORE_SPEED;
-      const radius = Config.gameplay.CORE_RADIUS;
-      const currentDir = DIRECTIONS[dirIndexRef.current];
+      let car = { ...carStateRef.current };
+      const currentAnchors = anchorsRef.current;
 
-      // Update Core Position
-      const newPos = {
-        x: corePosRef.current.x + currentDir.x * speed * deltaTime,
-        y: corePosRef.current.y + currentDir.y * speed * deltaTime,
-      };
-
-      corePosRef.current = newPos;
-
-      // Update Trail
-      const newTrail = [...trailRef.current, { ...newPos }];
-      if (newTrail.length > 5) {
-        newTrail.shift();
+      // 1. Check Hook Connection
+      if (isHoldingTouchRef.current && !car.isHooked) {
+        const bestAnchor = driftPhysicsSystem.findBestAnchor(car.position, currentAnchors);
+        if (bestAnchor) {
+          car = driftPhysicsSystem.attachHook(car, bestAnchor);
+          setActiveHookAnchor(bestAnchor);
+          try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          } catch {}
+        }
       }
-      trailRef.current = newTrail;
 
-      // 1. Collision Check: Arena Boundaries
-      const outOfBounds = collisionSystem.checkCircleOutOfBounds(
-        newPos,
-        radius,
-        arenaWidthRef.current,
-        arenaHeightRef.current
-      );
+      // 2. Physics Motion Update
+      if (car.isHooked && car.activeAnchorId) {
+        const anchor = currentAnchors.find((a) => a.id === car.activeAnchorId);
+        if (anchor) {
+          car = driftPhysicsSystem.updateOrbitMotion(car, anchor, deltaTime);
 
-      if (outOfBounds) {
+          // Center Pillar Post Collision Check (Hooked too long)
+          const dx = car.position.x - anchor.position.x;
+          const dy = car.position.y - anchor.position.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist <= anchor.radius + 12) {
+            triggerGameOver();
+            return;
+          }
+
+          // Generate dynamic neon tire skid marks
+          skidFrameCounter++;
+          if (skidFrameCounter % 2 === 0) {
+            const rad = (car.angle * Math.PI) / 180;
+            const perpX = Math.cos(rad) * 9;
+            const perpY = Math.sin(rad) * 9;
+            const rearX = car.position.x - Math.sin(rad) * 14;
+            const rearY = car.position.y + Math.cos(rad) * 14;
+
+            const newMark: SkidMark = {
+              id: `${Date.now()}-${Math.random()}`,
+              leftWheel: { x: rearX - perpX, y: rearY - perpY },
+              rightWheel: { x: rearX + perpX, y: rearY + perpY },
+              opacity: 0.9,
+            };
+
+            const updatedMarks = [...skidMarksRef.current, newMark];
+            if (updatedMarks.length > 40) updatedMarks.shift();
+            skidMarksRef.current = updatedMarks;
+            setSkidMarks([...updatedMarks]);
+          }
+
+          // Accumulate higher score while actively drifting
+          scoreAccumulatorRef.current += deltaTime * 40;
+        }
+      } else {
+        // Straight motion
+        car = driftPhysicsSystem.updateStraightMotion(car, deltaTime);
+        scoreAccumulatorRef.current += deltaTime * Config.gameplay.SCORE_PER_SECOND;
+      }
+
+      carStateRef.current = car;
+
+      // 3. Track Boundary Collision Check
+      const width = arenaWidthRef.current;
+      const height = arenaHeightRef.current;
+      const CAR_RADIUS = 12;
+
+      if (
+        car.position.x - CAR_RADIUS <= 6 ||
+        car.position.x + CAR_RADIUS >= width - 6 ||
+        car.position.y + CAR_RADIUS >= height + 10
+      ) {
         triggerGameOver();
         return;
       }
 
-      // 2. Collision Check: Static Obstacles
-      for (const obstacle of obstaclesRef.current) {
-        const hit = collisionSystem.checkCircleAABBCollision(
-          newPos,
-          radius,
-          obstacle
-        );
-        if (hit) {
-          triggerGameOver();
-          return;
-        }
-      }
-
-      // 3. Accumulate Score over survival time
-      scoreAccumulatorRef.current += deltaTime * Config.gameplay.SCORE_PER_SECOND;
-      const currentScoreInt = Math.floor(scoreAccumulatorRef.current);
-      setScore(currentScoreInt);
-
-      // 4. Level Completion Condition Check
-      const targetScore = currentLevelRef.current.completionScore ?? 200;
-      if (currentScoreInt >= targetScore) {
-        triggerLevelComplete(currentScoreInt);
+      // 4. Finish Line Reached Check
+      if (car.position.y <= finishLineYRef.current) {
+        const finalScore = Math.floor(scoreAccumulatorRef.current);
+        triggerLevelComplete(finalScore);
         return;
       }
 
-      // 5. Update React Render State for Smooth Graphics
-      setCoreRenderPos({ ...newPos });
-      setCoreTrail([...newTrail]);
+      // 5. Update Score
+      const currentScoreInt = Math.floor(scoreAccumulatorRef.current);
+      setScore(currentScoreInt);
+
+      // 6. Update Render State
+      setCarRenderState({ ...car });
     };
 
     const unsubscribe = mainGameEngine.subscribe(updateTick);
@@ -256,7 +348,6 @@ export default function GameScreen() {
     gameStateRef.current = GameState.LEVEL_COMPLETE;
     setGameState(GameState.LEVEL_COMPLETE);
 
-    // Unlock Level 2 & award 3 stars for Level 1
     unlockLevel('level_02');
     updateLevelStars(activeLevelId, 3);
 
@@ -269,7 +360,6 @@ export default function GameScreen() {
       newBest = finalScore;
     }
 
-    // Persist completion state to SaveService
     saveService.load().then((existing) => {
       const unlockedLevels = existing?.unlockedLevelIds || ['level_01'];
       if (!unlockedLevels.includes('level_02')) {
@@ -286,7 +376,7 @@ export default function GameScreen() {
           lastSavedAt: Date.now(),
         },
         highScore: newBest,
-        totalCoins: (existing?.totalCoins ?? 0) + (currentLevel.rewards?.coins ?? 100),
+        totalCoins: (existing?.totalCoins ?? 0) + (currentLevel.rewards?.coins ?? 150),
         unlockedLevelIds: unlockedLevels,
         levelStars: starsMap,
         unlockedItemIds: existing?.unlockedItemIds ?? ['skin_default'],
@@ -308,9 +398,7 @@ export default function GameScreen() {
 
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch {
-      // Haptics fallback
-    }
+    } catch {}
   };
 
   // Trigger Game Over
@@ -357,12 +445,10 @@ export default function GameScreen() {
 
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } catch {
-      // Haptics fallback
-    }
+    } catch {}
   };
 
-  // Pause / Resume Handlers
+  // Pause / Resume / Restart Handlers
   const handlePause = () => {
     mainGameEngine.stop();
     gameStateRef.current = GameState.PAUSED;
@@ -393,7 +479,7 @@ export default function GameScreen() {
         {/* Game HUD */}
         <GameHUD onPausePress={handlePause} />
 
-        {/* Game Arena Container */}
+        {/* Sling-Drift Track Container */}
         <View style={styles.canvasContainer}>
           <Card
             variant="neon"
@@ -402,52 +488,60 @@ export default function GameScreen() {
           >
             {arenaDimensions.width > 0 && arenaDimensions.height > 0 && (
               <>
-                {/* Finish Zone Gate Indicator */}
+                {/* Neon Finish Gate Banner */}
                 <View
                   pointerEvents="none"
-                  style={{
-                    position: 'absolute',
-                    top: arenaDimensions.height * 0.06,
-                    left: arenaDimensions.width * 0.2,
-                    width: arenaDimensions.width * 0.6,
-                    height: 22,
-                    borderWidth: 1.5,
-                    borderColor: Colors.success,
-                    borderRadius: 11,
-                    backgroundColor: 'rgba(0, 255, 102, 0.12)',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    borderStyle: 'dashed',
-                  }}
+                  style={[
+                    styles.finishGate,
+                    {
+                      top: finishLineYRef.current - 14,
+                      width: arenaDimensions.width - 24,
+                    },
+                  ]}
                 >
-                  <Text
-                    style={{
-                      fontSize: 9,
-                      fontWeight: Typography.weights.bold,
-                      color: Colors.success,
-                      letterSpacing: Typography.letterSpacing.wider,
-                    }}
-                  >
-                    BİTİŞ SEKTÖRÜ (FINISH)
-                  </Text>
+                  <Text style={styles.finishGateText}>🏁 FINISH LINE 🏁</Text>
                 </View>
 
-                {/* Deterministic Level Obstacles Rendering */}
-                {obstacles.map((obs, idx) => (
-                  <Obstacle key={`obs-${idx}`} bounds={obs.bounds} color={obs.color} />
+                {/* Tire Skid Marks */}
+                <SkidMarks marks={skidMarks} />
+
+                {/* Corner Drift Anchors */}
+                {anchors.map((anchor) => (
+                  <DriftAnchor
+                    key={anchor.id}
+                    anchor={anchor}
+                    isActive={activeHookAnchor?.id === anchor.id}
+                  />
                 ))}
 
-                {/* Core Player Rendering */}
-                <Core
-                  position={coreRenderPos}
-                  radius={Config.gameplay.CORE_RADIUS}
-                  trail={coreTrail}
+                {/* Laser Tether Cable between Car and Anchor */}
+                {carRenderState.isHooked && activeHookAnchor && (
+                  <LaserBeam
+                    from={carRenderState.position}
+                    to={activeHookAnchor.position}
+                    color={activeHookAnchor.color || Colors.primary}
+                  />
+                )}
+
+                {/* Cyberpunk Car Model */}
+                <CyberCar
+                  position={carRenderState.position}
+                  angle={carRenderState.angle}
+                  isHooked={carRenderState.isHooked}
                 />
 
-                {/* Full Arena Touch Target Overlay for 100% Instant Tap Turn */}
+                {/* Perfect Drift Floating Toast */}
+                {perfectDriftText && (
+                  <View pointerEvents="none" style={styles.perfectToast}>
+                    <Text style={styles.perfectToastText}>{perfectDriftText}</Text>
+                  </View>
+                )}
+
+                {/* Full-screen Hold & Release Sling-Drift Touch Layer */}
                 <Pressable
-                  style={StyleSheet.absoluteFillObject}
-                  onPress={handleTapTurn}
+                  style={[StyleSheet.absoluteFillObject, { zIndex: 99999 }]}
+                  onPressIn={handleTouchDown}
+                  onPressOut={handleTouchUp}
                 />
               </>
             )}
@@ -502,10 +596,47 @@ const styles = StyleSheet.create({
   },
   canvasCard: {
     flex: 1,
-    backgroundColor: Colors.backgroundSecondary,
+    backgroundColor: '#090D16',
     borderWidth: 2,
     borderColor: Colors.primaryGlow,
     borderRadius: Radius.xl,
     overflow: 'hidden',
+  },
+  finishGate: {
+    position: 'absolute',
+    left: 12,
+    height: 28,
+    borderWidth: 1.5,
+    borderColor: Colors.success,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 255, 102, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderStyle: 'dashed',
+    zIndex: 30,
+  },
+  finishGateText: {
+    fontSize: 11,
+    fontWeight: Typography.weights.black,
+    color: Colors.success,
+    letterSpacing: Typography.letterSpacing.arcade,
+  },
+  perfectToast: {
+    position: 'absolute',
+    top: '25%',
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255, 0, 127, 0.25)',
+    borderColor: Colors.secondary,
+    borderWidth: 1.5,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xs,
+    borderRadius: Radius.full,
+    zIndex: 200,
+  },
+  perfectToastText: {
+    fontSize: Typography.sizes.sm,
+    fontWeight: Typography.weights.black,
+    color: Colors.secondary,
+    letterSpacing: Typography.letterSpacing.wide,
   },
 });

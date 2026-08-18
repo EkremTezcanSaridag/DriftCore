@@ -3,58 +3,43 @@ import { Colors } from '../../constants/colors';
 
 export const LEVEL_01_DATA: ILevel = {
   id: 'level_01',
-  name: 'Level 1: First Drift',
-  description: 'Sezgisel viraj rotasını takip edin, zamanında tap yapın ve bitişe ulaşın.',
+  name: 'Sector 01: Neon Highway',
+  description: 'Virajlara yaklaşırken basılı tutun, kanca ile drift atın ve doğru zamanda bırakın!',
   difficulty: LevelDifficulty.EASY,
   unlocked: true,
   starsEarned: 0,
   highScore: 0,
-  startPosRatio: { x: 0.5, y: 0.85 }, // Safe bottom-center start
-  startDirectionIndex: 0, // 0: UP
-  completionScore: 200, // 200 points (~20s smooth circuit run) to complete level 1
+  startPosRatio: { x: 0.3, y: 0.88 }, // Start in left lane heading UP
+  startAngle: 0,                       // 0 degrees = UP
+  finishLineYRatio: 0.08,             // Reaching top completes track
+  completionScore: 250,
   requirements: {
-    targetScore: 200,
+    targetScore: 250,
     energyShardsToCollect: 0,
   },
   rewards: {
-    coins: 100,
+    coins: 150,
   },
-  obstacles: [
-    // 1. TURN 1 GUIDE: Top-Center Barrier (forces TAP -> RIGHT)
+  anchors: [
+    // 1. Right Drift Turn Anchor (First curve)
     {
-      name: 'Turn 1 Top Barrier',
-      xRatio: 0.2,
-      yRatio: 0.35,
-      widthRatio: 0.6,
-      heightRatio: 0.05,
+      id: 'anchor_01',
+      name: 'Apex Alpha (Right Turn)',
+      xRatio: 0.55,
+      yRatio: 0.64,
+      radius: 16,
+      activeRange: 150,
       color: Colors.secondary,
     },
-    // 2. TURN 2 GUIDE: Far Right Barrier (forces TAP -> DOWN)
+    // 2. Left Drift Turn Anchor (Second curve towards finish)
     {
-      name: 'Turn 2 Right Wall',
-      xRatio: 0.78,
-      yRatio: 0.35,
-      widthRatio: 0.08,
-      heightRatio: 0.45,
-      color: Colors.warning,
-    },
-    // 3. TURN 3 GUIDE: Bottom Right Barrier (forces TAP -> LEFT)
-    {
-      name: 'Turn 3 Bottom Wall',
-      xRatio: 0.35,
-      yRatio: 0.78,
-      widthRatio: 0.5,
-      heightRatio: 0.05,
-      color: Colors.secondary,
-    },
-    // 4. TURN 4 GUIDE: Left Return Wall (forces TAP -> UP into Finish Zone)
-    {
-      name: 'Turn 4 Left Wall',
-      xRatio: 0.14,
-      yRatio: 0.42,
-      widthRatio: 0.08,
-      heightRatio: 0.42,
-      color: Colors.accent,
+      id: 'anchor_02',
+      name: 'Apex Beta (Left Turn)',
+      xRatio: 0.45,
+      yRatio: 0.34,
+      radius: 16,
+      activeRange: 150,
+      color: Colors.primary,
     },
   ],
 };
@@ -63,51 +48,35 @@ export const INITIAL_LEVELS: ILevel[] = [
   LEVEL_01_DATA,
   {
     id: 'level_02',
-    name: 'Level 2: Asteroid Path',
-    description: 'Dar geçenlerde hassas tap zamanlaması gerektirir.',
+    name: 'Sector 02: Cyber S-Loops',
+    description: 'Ardışık dar S-virajları ve hassas kanca bırakma zamanlaması.',
     difficulty: LevelDifficulty.EASY,
-    unlocked: false, // Locked until Level 1 completed
+    unlocked: false,
     starsEarned: 0,
     highScore: 0,
     requirements: {
-      targetScore: 500,
+      targetScore: 600,
       energyShardsToCollect: 0,
     },
     rewards: {
-      coins: 250,
+      coins: 300,
     },
   },
   {
     id: 'level_03',
-    name: 'Level 3: Neon Grid',
-    description: 'Yüksek hızlı labirent ve dar viraj rotası.',
+    name: 'Sector 03: Neon Grid Hairpin',
+    description: 'Yüksek hızlı 180 derece U-virajları.',
     difficulty: LevelDifficulty.MEDIUM,
     unlocked: false,
     starsEarned: 0,
     highScore: 0,
     requirements: {
-      targetScore: 1000,
+      targetScore: 1200,
       energyShardsToCollect: 0,
     },
     rewards: {
-      coins: 500,
+      coins: 600,
       unlockItemSkinId: 'skin_neon_cyan',
-    },
-  },
-  {
-    id: 'level_04',
-    name: 'Level 4: Hyper Pulse',
-    description: 'İleri seviye refleks ve zamanlama testi.',
-    difficulty: LevelDifficulty.HARD,
-    unlocked: false,
-    starsEarned: 0,
-    highScore: 0,
-    requirements: {
-      targetScore: 2000,
-      energyShardsToCollect: 0,
-    },
-    rewards: {
-      coins: 1000,
     },
   },
 ];
