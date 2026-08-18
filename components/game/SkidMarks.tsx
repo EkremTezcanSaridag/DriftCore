@@ -36,7 +36,10 @@ export const SkidMarks: React.FC<SkidMarksProps> = ({ segments }) => {
               transform: [{ rotate: `${seg.angle}deg` }],
             },
           ]}
-        />
+        >
+          {/* Inner White-Hot Core Laser Burn */}
+          <View style={styles.innerCore} />
+        </View>
       ))}
     </View>
   );
@@ -49,10 +52,19 @@ const styles = StyleSheet.create({
   },
   skidStrip: {
     position: 'absolute',
-    borderRadius: 2,
+    borderRadius: 3,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.85,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  innerCore: {
+    width: '40%',
+    height: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 1,
+    opacity: 0.8,
   },
 });

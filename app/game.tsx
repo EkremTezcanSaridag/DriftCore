@@ -36,6 +36,7 @@ import { mainGameEngine } from '../game/core/GameEngine';
 import { driftPhysicsSystem } from '../game/systems/DriftPhysicsSystem';
 import { LevelRegistry } from '../game/levels/LevelRegistry';
 import { saveService } from '../services/SaveService';
+import { soundService } from '../services/SoundService';
 
 interface ActiveCollectible extends CollectibleData {
   worldPos: Vector2D;
@@ -114,7 +115,7 @@ export default function GameScreen() {
   const coinsCountRef = useRef<number>(0);
   const hookStartTimeRef = useRef<number>(0);
   const nitroEndTimeRef = useRef<number>(0);
-  const spawnProtectionTimerRef = useRef<number>(0.8);
+  const spawnProtectionTimerRef = useRef<number>(1.0);
   const viewportWidthRef = useRef<number>(0);
   const viewportHeightRef = useRef<number>(0);
   const gameStateRef = useRef<GameState>(GameState.READY);
@@ -133,8 +134,9 @@ export default function GameScreen() {
     currentLevelRef.current = currentLevel;
   }, [currentLevel]);
 
-  // Load High Score on initial mount
+  // Load High Score & Initialize SFX on initial mount
   useEffect(() => {
+    soundService.initialize();
     saveService.load().then((savedData) => {
       if (savedData?.highScore) {
         setHighScore(savedData.highScore);
@@ -289,6 +291,7 @@ export default function GameScreen() {
       setActiveHookAnchor(bestAnchor);
       setCarRenderState({ ...hookedCar });
 
+      soundService.playHook();
       try {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       } catch {}
@@ -321,10 +324,12 @@ export default function GameScreen() {
         nitroEndTimeRef.current = Date.now() + 600;
         setIsNitroActive(true);
 
-        spawnParticles(currentCar.position.x, currentCar.position.y, Colors.primary, 10);
+        soundService.playBoost();
+        spawnParticles(currentCar.position.x, currentCar.position.y, Colors.primary, 12);
       } else {
         setPerfectDriftText('GOOD DRIFT! +25');
         scoreAccumulatorRef.current += 25;
+        soundService.playBoost();
       }
 
       setCarRenderState({ ...releasedCar });
@@ -345,7 +350,7 @@ export default function GameScreen() {
       const width = viewportWidthRef.current;
       const totalLength = totalTrackLengthRef.current;
 
-      // CRITICAL: NEVER run physics or collisions on zero/unmeasured viewport!
+      // Guard: NEVER run physics on zero/unmeasured viewport!
       if (width < 100 || height < 100) return;
 
       let car = { ...carStateRef.current };
@@ -362,6 +367,7 @@ export default function GameScreen() {
           car = driftPhysicsSystem.attachHook(car, bestAnchor);
           hookStartTimeRef.current = Date.now();
           setActiveHookAnchor(bestAnchor);
+          soundService.playHook();
           try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
           } catch {}
@@ -387,27 +393,28 @@ export default function GameScreen() {
 
           if (dist <= anchor.radius + 6 && spawnProtectionTimerRef.current <= 0) {
             spawnParticles(car.position.x, car.position.y, Colors.secondary, 25);
+            soundService.playCrash();
             triggerGameOver();
             return;
           }
 
-          // Generate Continuous Glowing Neon Tire Burn Ribbon Trails
+          // Generate Prominent Glowing Neon Tire Burn Ribbon Trails
           const rad = (car.angle * Math.PI) / 180;
-          const perpX = Math.cos(rad) * 12;
-          const perpY = Math.sin(rad) * 12;
-          const rearX = car.position.x - Math.sin(rad) * 18;
-          const rearY = car.position.y + Math.cos(rad) * 18;
+          const perpX = Math.cos(rad) * 13;
+          const perpY = Math.sin(rad) * 13;
+          const rearX = car.position.x - Math.sin(rad) * 20;
+          const rearY = car.position.y + Math.cos(rad) * 20;
 
-          const segLength = Math.max(8, car.speed * deltaTime * 1.1);
+          const segLength = Math.max(10, car.speed * deltaTime * 1.15);
           const newLeftSeg: SkidSegment = {
             id: `skid-l-${Date.now()}-${Math.random()}`,
             x: rearX - perpX,
             y: rearY - perpY,
             angle: car.angle,
             length: segLength,
-            width: 3.5,
+            width: 6,
             color: Colors.secondary,
-            opacity: 0.85,
+            opacity: 0.95,
           };
           const newRightSeg: SkidSegment = {
             id: `skid-r-${Date.now()}-${Math.random()}`,
@@ -415,18 +422,18 @@ export default function GameScreen() {
             y: rearY + perpY,
             angle: car.angle,
             length: segLength,
-            width: 3.5,
+            width: 6,
             color: Colors.secondary,
-            opacity: 0.85,
+            opacity: 0.95,
           };
 
-          // Update & fade skid segments smoothly
+          // Smooth 2.5s persistent fade
           const activeSegments = skidSegmentsRef.current
-            .map((s) => ({ ...s, opacity: s.opacity - deltaTime * 0.75 }))
+            .map((s) => ({ ...s, opacity: s.opacity - deltaTime * 0.4 }))
             .filter((s) => s.opacity > 0.05);
 
           activeSegments.push(newLeftSeg, newRightSeg);
-          if (activeSegments.length > 70) activeSegments.splice(0, 2);
+          if (activeSegments.length > 90) activeSegments.splice(0, 2);
           skidSegmentsRef.current = activeSegments;
           setSkidSegments([...activeSegments]);
 
@@ -441,7 +448,7 @@ export default function GameScreen() {
         // Fade existing skid trails when driving straight
         if (skidSegmentsRef.current.length > 0) {
           const faded = skidSegmentsRef.current
-            .map((s) => ({ ...s, opacity: s.opacity - deltaTime * 0.9 }))
+            .map((s) => ({ ...s, opacity: s.opacity - deltaTime * 0.5 }))
             .filter((s) => s.opacity > 0.05);
           skidSegmentsRef.current = faded;
           setSkidSegments([...faded]);
@@ -470,11 +477,13 @@ export default function GameScreen() {
             shardsCountRef.current++;
             setShardsCount(shardsCountRef.current);
             scoreAccumulatorRef.current += 100 * comboMultiplierRef.current;
+            soundService.playPickup();
             spawnParticles(item.worldPos.x, item.worldPos.y, item.color || Colors.primary, 14);
           } else {
             coinsCountRef.current += 10;
             setCoinsCount(coinsCountRef.current);
             scoreAccumulatorRef.current += 50 * comboMultiplierRef.current;
+            soundService.playCoin();
             spawnParticles(item.worldPos.x, item.worldPos.y, Colors.warning, 10);
           }
 
@@ -520,6 +529,7 @@ export default function GameScreen() {
           car.position.y >= totalLength + 100)
       ) {
         spawnParticles(car.position.x, car.position.y, Colors.secondary, 25);
+        soundService.playCrash();
         triggerGameOver();
         return;
       }
@@ -527,6 +537,7 @@ export default function GameScreen() {
       // 7. Finish Line Reached Check
       if (car.position.y <= finishLineYRef.current) {
         const finalScore = Math.floor(scoreAccumulatorRef.current);
+        soundService.playVictory();
         triggerLevelComplete(finalScore);
         return;
       }
