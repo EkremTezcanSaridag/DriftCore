@@ -4,14 +4,14 @@ import { Colors } from '../../constants/colors';
 export const LEVEL_01_DATA: ILevel = {
   id: 'level_01',
   name: 'Level 1: First Drift',
-  description: 'Temel yön değiştirme ve engellerden kaçma rotasını öğrenin.',
+  description: 'Sezgisel viraj rotasını takip edin, zamanında tap yapın ve bitişe ulaşın.',
   difficulty: LevelDifficulty.EASY,
   unlocked: true,
   starsEarned: 0,
   highScore: 0,
-  startPosRatio: { x: 0.5, y: 0.82 }, // Start near bottom-center
+  startPosRatio: { x: 0.5, y: 0.85 }, // Safe bottom-center start
   startDirectionIndex: 0, // 0: UP
-  completionScore: 200, // 200 points (~20s survival) to complete level 1
+  completionScore: 200, // 200 points (~20s smooth circuit run) to complete level 1
   requirements: {
     targetScore: 200,
     energyShardsToCollect: 0,
@@ -20,57 +20,41 @@ export const LEVEL_01_DATA: ILevel = {
     coins: 100,
   },
   obstacles: [
-    // Stage 1: Learn - Center-top horizontal barrier (forces initial TAP RIGHT/LEFT)
+    // 1. TURN 1 GUIDE: Top-Center Barrier (forces TAP -> RIGHT)
     {
-      name: 'Stage 1 Guide Barrier',
-      xRatio: 0.22,
-      yRatio: 0.45,
-      widthRatio: 0.56,
-      heightRatio: 0.06,
+      name: 'Turn 1 Top Barrier',
+      xRatio: 0.2,
+      yRatio: 0.35,
+      widthRatio: 0.6,
+      heightRatio: 0.05,
       color: Colors.secondary,
     },
-    // Stage 2: First Escape - Left and Right side barriers
+    // 2. TURN 2 GUIDE: Far Right Barrier (forces TAP -> DOWN)
     {
-      name: 'Stage 2 Right Wall',
-      xRatio: 0.72,
-      yRatio: 0.55,
-      widthRatio: 0.12,
-      heightRatio: 0.25,
+      name: 'Turn 2 Right Wall',
+      xRatio: 0.78,
+      yRatio: 0.35,
+      widthRatio: 0.08,
+      heightRatio: 0.45,
       color: Colors.warning,
     },
+    // 3. TURN 3 GUIDE: Bottom Right Barrier (forces TAP -> LEFT)
     {
-      name: 'Stage 2 Left Wall',
-      xRatio: 0.16,
-      yRatio: 0.55,
-      widthRatio: 0.12,
-      heightRatio: 0.25,
-      color: Colors.warning,
+      name: 'Turn 3 Bottom Wall',
+      xRatio: 0.35,
+      yRatio: 0.78,
+      widthRatio: 0.5,
+      heightRatio: 0.05,
+      color: Colors.secondary,
     },
-    // Stage 3: Narrow Passage - Upper central block
+    // 4. TURN 4 GUIDE: Left Return Wall (forces TAP -> UP into Finish Zone)
     {
-      name: 'Stage 3 Core Block',
-      xRatio: 0.4,
-      yRatio: 0.18,
-      widthRatio: 0.2,
-      heightRatio: 0.14,
+      name: 'Turn 4 Left Wall',
+      xRatio: 0.14,
+      yRatio: 0.42,
+      widthRatio: 0.08,
+      heightRatio: 0.42,
       color: Colors.accent,
-    },
-    // Stage 4: Top Left & Right Gate Pillars
-    {
-      name: 'Stage 4 Left Gate',
-      xRatio: 0.08,
-      yRatio: 0.1,
-      widthRatio: 0.15,
-      heightRatio: 0.08,
-      color: Colors.primary,
-    },
-    {
-      name: 'Stage 4 Right Gate',
-      xRatio: 0.77,
-      yRatio: 0.1,
-      widthRatio: 0.15,
-      heightRatio: 0.08,
-      color: Colors.primary,
     },
   ],
 };
@@ -113,7 +97,7 @@ export const INITIAL_LEVELS: ILevel[] = [
   {
     id: 'level_04',
     name: 'Level 4: Hyper Pulse',
-    description: 'İleri seviye refleks ve refleks zamanlaması testi.',
+    description: 'İleri seviye refleks ve zamanlama testi.',
     difficulty: LevelDifficulty.HARD,
     unlocked: false,
     starsEarned: 0,
