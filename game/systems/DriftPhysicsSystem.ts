@@ -3,7 +3,7 @@ import { CyberCarState, DriftAnchor } from '../../types/physics';
 
 /**
  * DriftCore — Ultra-Responsive 2D Sling-Drift Physics Engine
- * Features elastic hook tethering, drift oversteer angle, dynamic angular momentum and snappy tangential launch.
+ * Bulletproof circular orbit drift dynamics, smooth elastic tethering, and snappy launch.
  */
 export class DriftPhysicsSystem {
   /**
@@ -51,7 +51,9 @@ export class DriftPhysicsSystem {
   public attachHook(car: CyberCarState, anchor: DriftAnchor): CyberCarState {
     const dx = car.position.x - anchor.position.x;
     const dy = car.position.y - anchor.position.y;
-    const radius = Math.max(30, Math.sqrt(dx * dx + dy * dy));
+    const rawDist = Math.sqrt(dx * dx + dy * dy);
+    // Clamp initial orbit radius so car stays strictly within safe lane bounds
+    const radius = Math.max(35, Math.min(105, rawDist));
     const initialOrbitAngle = Math.atan2(dy, dx);
 
     // Determine orbit rotation direction via 2D cross product
@@ -73,27 +75,23 @@ export class DriftPhysicsSystem {
   }
 
   /**
-   * Update circular orbit drift motion with oversteer angle and centripetal tension
+   * Update circular orbit drift motion with oversteer angle
    */
   public updateOrbitMotion(car: CyberCarState, anchor: DriftAnchor, deltaTime: number): CyberCarState {
-    // Angular speed inversely proportional to radius with higher torque
-    const angularSpeed = (car.speed / Math.max(25, car.orbitRadius)) * car.orbitDirection * 1.05;
+    const angularSpeed = (car.speed / Math.max(25, car.orbitRadius)) * car.orbitDirection;
     const newOrbitAngle = car.orbitAngle + angularSpeed * deltaTime;
 
-    // Slight elastic tether contraction for snappy drift feel
-    const newRadius = Math.max(35, car.orbitRadius - 10 * deltaTime);
-
-    const newX = anchor.position.x + Math.cos(newOrbitAngle) * newRadius;
-    const newY = anchor.position.y + Math.sin(newOrbitAngle) * newRadius;
+    const newX = anchor.position.x + Math.cos(newOrbitAngle) * car.orbitRadius;
+    const newY = anchor.position.y + Math.sin(newOrbitAngle) * car.orbitRadius;
 
     // Tangent angle perpendicular to radius
     const tangentAngleRad = newOrbitAngle + (car.orbitDirection > 0 ? Math.PI / 2 : -Math.PI / 2);
     let baseAngleDeg = (tangentAngleRad * 180) / Math.PI + 90;
     baseAngleDeg = ((baseAngleDeg % 360) + 360) % 360;
 
-    // Add +12° drift oversteer tail-kick angle for visual/physics juiciness
-    const driftOversteer = car.orbitDirection * 14;
-    const visualCarAngle = ((baseAngleDeg + driftOversteer % 360) + 360) % 360;
+    // Add +10° drift oversteer tail-kick angle
+    const driftOversteer = car.orbitDirection * 10;
+    const visualCarAngle = (((baseAngleDeg + driftOversteer) % 360) + 360) % 360;
 
     const angleRad = (baseAngleDeg * Math.PI) / 180;
     const vx = Math.sin(angleRad) * car.speed;
@@ -104,16 +102,14 @@ export class DriftPhysicsSystem {
       position: { x: newX, y: newY },
       velocity: { x: vx, y: vy },
       angle: visualCarAngle,
-      orbitRadius: newRadius,
       orbitAngle: newOrbitAngle,
     };
   }
 
   /**
-   * Release hook and launch tangentially with snappy forward impulse
+   * Release hook and launch tangentially with forward impulse
    */
   public releaseHook(car: CyberCarState): CyberCarState {
-    // Realign velocity vector with heading upon release
     const tangentAngleRad = car.orbitAngle + (car.orbitDirection > 0 ? Math.PI / 2 : -Math.PI / 2);
     let launchAngle = (tangentAngleRad * 180) / Math.PI + 90;
     launchAngle = ((launchAngle % 360) + 360) % 360;

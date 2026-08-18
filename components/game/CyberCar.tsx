@@ -13,13 +13,14 @@ interface CyberCarProps {
 
 export const CyberCar: React.FC<CyberCarProps> = ({
   position,
-  angle,
+  angle = 0,
   isHooked = false,
   isNitroActive = false,
   scale = 1.0,
 }) => {
-  const CAR_WIDTH = 48 * scale;
-  const CAR_LENGTH = 78 * scale;
+  const CAR_WIDTH = 36 * scale;
+  const CAR_LENGTH = 60 * scale;
+  const safeAngle = Number.isFinite(angle) ? angle : 0;
 
   return (
     <View
@@ -31,7 +32,7 @@ export const CyberCar: React.FC<CyberCarProps> = ({
           top: position.y - CAR_LENGTH / 2,
           width: CAR_WIDTH,
           height: CAR_LENGTH,
-          transform: [{ rotate: `${angle}deg` }],
+          transform: [{ rotate: `${safeAngle}deg` }],
         },
       ]}
     >
@@ -83,57 +84,57 @@ const styles = StyleSheet.create({
   },
   nitroPlumeContainer: {
     position: 'absolute',
-    bottom: -28,
+    bottom: -22,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    width: 24,
-    height: 30,
+    width: 20,
+    height: 24,
     zIndex: 90,
   },
   nitroOuterGlow: {
-    width: 20,
-    height: 28,
+    width: 16,
+    height: 22,
     backgroundColor: Colors.primary,
-    borderRadius: 10,
+    borderRadius: 8,
     opacity: 0.95,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: 16,
+    shadowRadius: 14,
   },
   nitroInnerCore: {
     position: 'absolute',
     top: 0,
-    width: 10,
-    height: 18,
+    width: 8,
+    height: 14,
     backgroundColor: '#FFFFFF',
-    borderRadius: 5,
+    borderRadius: 4,
     shadowColor: '#FFFFFF',
-    shadowRadius: 10,
+    shadowRadius: 8,
     shadowOpacity: 1,
   },
   driftSparkLeft: {
     position: 'absolute',
-    bottom: 4,
-    left: -8,
-    width: 8,
-    height: 8,
+    bottom: 2,
+    left: -6,
+    width: 6,
+    height: 6,
     backgroundColor: Colors.warning,
-    borderRadius: 4,
+    borderRadius: 3,
     shadowColor: Colors.warning,
-    shadowRadius: 10,
+    shadowRadius: 8,
     shadowOpacity: 1,
   },
   driftSparkRight: {
     position: 'absolute',
-    bottom: 4,
-    right: -8,
-    width: 8,
-    height: 8,
+    bottom: 2,
+    right: -6,
+    width: 6,
+    height: 6,
     backgroundColor: Colors.warning,
-    borderRadius: 4,
+    borderRadius: 3,
     shadowColor: Colors.warning,
-    shadowRadius: 10,
+    shadowRadius: 8,
     shadowOpacity: 1,
   },
 });

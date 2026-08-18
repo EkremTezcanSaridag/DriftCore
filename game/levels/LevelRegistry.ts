@@ -22,76 +22,76 @@ export const LEVEL_01_DATA: ILevel = {
     coins: 250,
   },
   anchors: [
-    // 1. Viraj: Geniş Sağ Viraj (Turn 1 Wide Right)
+    // 1. Viraj: Dengeli Sağ Viraj (Turn 1 Safe Right - Center-Right Apex)
     {
       id: 'anchor_01',
       name: 'Apex 1 (Sağ Viraj)',
-      xRatio: 0.65,
+      xRatio: 0.54,
       yWorld: 2000,
-      radius: 20,
-      activeRange: 180,
+      radius: 18,
+      activeRange: 130,
       color: Colors.secondary,
     },
-    // 2. Viraj: Geniş Sol Viraj (Turn 2 Wide Left)
+    // 2. Viraj: Dengeli Sol Viraj (Turn 2 Safe Left - Center-Left Apex)
     {
       id: 'anchor_02',
       name: 'Apex 2 (Sol Viraj)',
-      xRatio: 0.35,
+      xRatio: 0.46,
       yWorld: 1550,
-      radius: 20,
-      activeRange: 180,
+      radius: 18,
+      activeRange: 130,
       color: Colors.primary,
     },
-    // 3. Viraj: Keskin Sağ Viraj (Turn 3 Sharp Right)
+    // 3. Viraj: Tempolu Sağ Viraj (Turn 3 Medium Right)
     {
       id: 'anchor_03',
-      name: 'Apex 3 (Keskin Sağ)',
-      xRatio: 0.68,
+      name: 'Apex 3 (Sağ Viraj)',
+      xRatio: 0.55,
       yWorld: 1100,
-      radius: 20,
-      activeRange: 180,
+      radius: 18,
+      activeRange: 130,
       color: Colors.warning,
     },
-    // 4. Viraj: Hızlı Sol Viraj (Turn 4 Fast Left)
+    // 4. Viraj: Tempolu Sol Viraj (Turn 4 Medium Left)
     {
       id: 'anchor_04',
-      name: 'Apex 4 (Hızlı Sol)',
-      xRatio: 0.32,
+      name: 'Apex 4 (Sol Viraj)',
+      xRatio: 0.45,
       yWorld: 700,
-      radius: 20,
-      activeRange: 180,
+      radius: 18,
+      activeRange: 130,
       color: Colors.secondary,
     },
-    // 5. Viraj: Final Düzlük Girişi (Turn 5 Final Straight Entry)
+    // 5. Viraj: Bitiş Girişi Son Viraj (Turn 5 Final Straight Entry)
     {
       id: 'anchor_05',
       name: 'Apex 5 (Final Viraj)',
-      xRatio: 0.58,
+      xRatio: 0.52,
       yWorld: 380,
-      radius: 20,
-      activeRange: 180,
+      radius: 18,
+      activeRange: 130,
       color: Colors.primary,
     },
   ],
   collectibles: [
     // Turn 1 Shard & Coin
-    { id: 'shard_01', type: 'shard', xRatio: 0.78, yWorld: 1950, color: Colors.primary },
+    { id: 'shard_01', type: 'shard', xRatio: 0.68, yWorld: 1950, color: Colors.primary },
     { id: 'coin_01', type: 'coin', xRatio: 0.35, yWorld: 2200 },
 
     // Turn 2 Shard & Coin
-    { id: 'shard_02', type: 'shard', xRatio: 0.22, yWorld: 1500, color: Colors.secondary },
+    { id: 'shard_02', type: 'shard', xRatio: 0.32, yWorld: 1500, color: Colors.secondary },
     { id: 'coin_02', type: 'coin', xRatio: 0.5, yWorld: 1750 },
 
     // Turn 3 Shard & Coin
-    { id: 'shard_03', type: 'shard', xRatio: 0.8, yWorld: 1050, color: Colors.warning },
+    { id: 'shard_03', type: 'shard', xRatio: 0.7, yWorld: 1050, color: Colors.warning },
     { id: 'coin_03', type: 'coin', xRatio: 0.45, yWorld: 1300 },
 
     // Turn 4 Shard & Coin
-    { id: 'shard_04', type: 'shard', xRatio: 0.18, yWorld: 650, color: Colors.primary },
-    { id: 'coin_04', type: 'coin', xRatio: 0.6, yWorld: 880 },
+    { id: 'shard_04', type: 'shard', xRatio: 0.3, yWorld: 650, color: Colors.primary },
+    { id: 'coin_04', type: 'coin', xRatio: 0.55, yWorld: 880 },
 
     // Turn 5 Shard & Final Straight Coins
-    { id: 'shard_05', type: 'shard', xRatio: 0.72, yWorld: 330, color: Colors.secondary },
+    { id: 'shard_05', type: 'shard', xRatio: 0.65, yWorld: 330, color: Colors.secondary },
     { id: 'coin_05', type: 'coin', xRatio: 0.5, yWorld: 500 },
     { id: 'coin_06', type: 'coin', xRatio: 0.5, yWorld: 220 },
   ],

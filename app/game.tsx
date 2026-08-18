@@ -81,7 +81,7 @@ export default function GameScreen() {
   const [isNitroActive, setIsNitroActive] = useState<boolean>(false);
 
   const [carRenderState, setCarRenderState] = useState<CyberCarState>({
-    position: { x: 120, y: 2200 },
+    position: { x: 120, y: 2450 },
     velocity: { x: 0, y: -250 },
     angle: 0,
     speed: 250,
@@ -114,6 +114,7 @@ export default function GameScreen() {
   const coinsCountRef = useRef<number>(0);
   const hookStartTimeRef = useRef<number>(0);
   const nitroEndTimeRef = useRef<number>(0);
+  const spawnProtectionTimerRef = useRef<number>(0);
   const viewportWidthRef = useRef<number>(0);
   const viewportHeightRef = useRef<number>(0);
   const gameStateRef = useRef<GameState>(GameState.READY);
@@ -180,7 +181,7 @@ export default function GameScreen() {
       };
 
       const startAngle = level.startAngle ?? 0;
-      const initialSpeed = 250;
+      const initialSpeed = 240;
 
       // Center initial camera on car
       const initialCameraY = Math.max(
@@ -213,8 +214,8 @@ export default function GameScreen() {
           x: Math.round(width * anchorData.xRatio),
           y: anchorData.yWorld,
         },
-        radius: anchorData.radius ?? 20,
-        activeRange: anchorData.activeRange ?? 180,
+        radius: anchorData.radius ?? 18,
+        activeRange: anchorData.activeRange ?? 130,
         color: anchorData.color ?? Colors.secondary,
       }));
 
@@ -239,6 +240,7 @@ export default function GameScreen() {
       shardsCountRef.current = 0;
       coinsCountRef.current = 0;
       nitroEndTimeRef.current = 0;
+      spawnProtectionTimerRef.current = 0.6; // 0.6s spawn safety buffer
 
       setAnchors(calculatedAnchors);
       setCollectibles(calculatedCollectibles);
@@ -306,7 +308,7 @@ export default function GameScreen() {
       setActiveHookAnchor(null);
 
       // Evaluate Perfect Drift & Combo Boost
-      if (hookDuration >= 0.25) {
+      if (hookDuration >= 0.2) {
         const nextCombo = Math.min(5, comboMultiplierRef.current + 1);
         comboMultiplierRef.current = nextCombo;
         setComboMultiplier(nextCombo);
@@ -315,11 +317,11 @@ export default function GameScreen() {
         scoreAccumulatorRef.current += bonusPoints;
         setPerfectDriftText(`PERFECT DRIFT! x${nextCombo} (+${bonusPoints})`);
 
-        // Trigger Nitro Boost for 0.7s
-        nitroEndTimeRef.current = Date.now() + 700;
+        // Trigger Nitro Boost for 0.6s
+        nitroEndTimeRef.current = Date.now() + 600;
         setIsNitroActive(true);
 
-        spawnParticles(currentCar.position.x, currentCar.position.y, Colors.primary, 12);
+        spawnParticles(currentCar.position.x, currentCar.position.y, Colors.primary, 10);
       } else {
         setPerfectDriftText('GOOD DRIFT! +25');
         scoreAccumulatorRef.current += 25;
@@ -345,6 +347,10 @@ export default function GameScreen() {
       const width = viewportWidthRef.current;
       const totalLength = totalTrackLengthRef.current;
 
+      if (spawnProtectionTimerRef.current > 0) {
+        spawnProtectionTimerRef.current -= deltaTime;
+      }
+
       // 1. Check Hook Connection
       if (isHoldingTouchRef.current && !car.isHooked) {
         const bestAnchor = driftPhysicsSystem.findBestAnchor(car.position, currentAnchors);
@@ -361,7 +367,7 @@ export default function GameScreen() {
       // Check Nitro State
       const nitroActive = Date.now() < nitroEndTimeRef.current;
       setIsNitroActive(nitroActive);
-      const effectiveSpeed = nitroActive ? 320 : 250;
+      const effectiveSpeed = nitroActive ? 300 : 240;
       car.speed = effectiveSpeed;
 
       // 2. Physics Motion Update
@@ -375,7 +381,7 @@ export default function GameScreen() {
           const dy = car.position.y - anchor.position.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          if (dist <= anchor.radius + 14) {
+          if (dist <= anchor.radius + 10 && spawnProtectionTimerRef.current <= 0) {
             spawnParticles(car.position.x, car.position.y, Colors.secondary, 25);
             triggerGameOver();
             return;
@@ -383,10 +389,10 @@ export default function GameScreen() {
 
           // Generate Continuous Glowing Neon Tire Burn Ribbon Trails
           const rad = (car.angle * Math.PI) / 180;
-          const perpX = Math.cos(rad) * 14;
-          const perpY = Math.sin(rad) * 14;
-          const rearX = car.position.x - Math.sin(rad) * 22;
-          const rearY = car.position.y + Math.cos(rad) * 22;
+          const perpX = Math.cos(rad) * 12;
+          const perpY = Math.sin(rad) * 12;
+          const rearX = car.position.x - Math.sin(rad) * 18;
+          const rearY = car.position.y + Math.cos(rad) * 18;
 
           const segLength = Math.max(8, car.speed * deltaTime * 1.1);
           const newLeftSeg: SkidSegment = {
@@ -416,7 +422,7 @@ export default function GameScreen() {
             .filter((s) => s.opacity > 0.05);
 
           activeSegments.push(newLeftSeg, newRightSeg);
-          if (activeSegments.length > 80) activeSegments.splice(0, 2);
+          if (activeSegments.length > 70) activeSegments.splice(0, 2);
           skidSegmentsRef.current = activeSegments;
           setSkidSegments([...activeSegments]);
 
@@ -452,7 +458,7 @@ export default function GameScreen() {
         const cdy = car.position.y - item.worldPos.y;
         const distSq = cdx * cdx + cdy * cdy;
 
-        if (distSq <= 30 * 30) {
+        if (distSq <= 28 * 28) {
           item.collected = true;
           collectiblesUpdated = true;
 
@@ -501,12 +507,13 @@ export default function GameScreen() {
       const currentCameraY = cameraYRef.current;
       setCameraY(currentCameraY);
 
-      // 6. Track Boundary Collision Check
-      const CAR_RADIUS = 16;
+      // 6. Track Boundary Collision Check (with Spawn Protection)
+      const CAR_RADIUS = 14;
       if (
-        car.position.x - CAR_RADIUS <= 6 ||
-        car.position.x + CAR_RADIUS >= width - 6 ||
-        car.position.y >= totalLength + 20
+        spawnProtectionTimerRef.current <= 0 &&
+        (car.position.x - CAR_RADIUS <= 2 ||
+          car.position.x + CAR_RADIUS >= width - 2 ||
+          car.position.y >= totalLength + 20)
       ) {
         spawnParticles(car.position.x, car.position.y, Colors.secondary, 25);
         triggerGameOver();
