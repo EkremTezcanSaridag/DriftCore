@@ -9,6 +9,7 @@ export enum GameState {
   PLAYING = 'PLAYING',
   PAUSED = 'PAUSED',
   GAME_OVER = 'GAME_OVER',
+  LEVEL_COMPLETE = 'LEVEL_COMPLETE',
 }
 
 export interface Vector2D {
