@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { Vector2D } from '../../types/game';
 import { Colors } from '../../constants/colors';
 
@@ -16,7 +16,7 @@ export const EnergyShard: React.FC<EnergyShardProps> = ({
 }) => {
   if (collected) return null;
 
-  const SHARD_SIZE = 18;
+  const SHARD_SIZE = 26;
 
   return (
     <View
@@ -31,7 +31,7 @@ export const EnergyShard: React.FC<EnergyShardProps> = ({
         },
       ]}
     >
-      {/* Outer Glow Halo */}
+      {/* Outer Pulse Glow Halo */}
       <View
         style={[
           styles.glowHalo,
@@ -42,22 +42,12 @@ export const EnergyShard: React.FC<EnergyShardProps> = ({
         ]}
       />
 
-      {/* Diamond Crystal Body (Rotated 45 degrees) */}
-      <View
-        style={[
-          styles.diamondBody,
-          {
-            borderColor: color,
-            shadowColor: color,
-          },
-        ]}
-      >
-        {/* Inner Light Facet */}
-        <View style={styles.facet} />
-
-        {/* Pure White Core Star */}
-        <View style={styles.coreStar} />
-      </View>
+      {/* High-Resolution Crystal Diamond Shard Sprite */}
+      <Image
+        source={require('../../assets/images/energy_shard.png')}
+        style={styles.shardSprite}
+        resizeMode="contain"
+      />
     </View>
   );
 };
@@ -71,42 +61,20 @@ const styles = StyleSheet.create({
   },
   glowHalo: {
     position: 'absolute',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    opacity: 0.25,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    opacity: 0.35,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 10,
   },
-  diamondBody: {
-    width: 14,
-    height: 14,
-    backgroundColor: '#0F172A',
-    borderWidth: 1.5,
-    borderRadius: 3,
-    transform: [{ rotate: '45deg' }],
-    alignItems: 'center',
-    justifyContent: 'center',
+  shardSprite: {
+    width: '100%',
+    height: '100%',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.9,
     shadowRadius: 8,
-    elevation: 4,
-  },
-  facet: {
-    position: 'absolute',
-    top: 1,
-    left: 1,
-    width: 5,
-    height: 5,
-    backgroundColor: '#FFFFFF',
-    opacity: 0.6,
-    borderRadius: 1,
-  },
-  coreStar: {
-    width: 4,
-    height: 4,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
   },
 });

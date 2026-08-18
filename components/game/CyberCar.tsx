@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { Vector2D } from '../../types/game';
 import { Colors } from '../../constants/colors';
 
@@ -16,8 +16,8 @@ export const CyberCar: React.FC<CyberCarProps> = ({
   isHooked = false,
   isNitroActive = false,
 }) => {
-  const CAR_WIDTH = 22;
-  const CAR_LENGTH = 38;
+  const CAR_WIDTH = 32;
+  const CAR_LENGTH = 54;
 
   return (
     <View
@@ -33,30 +33,16 @@ export const CyberCar: React.FC<CyberCarProps> = ({
         },
       ]}
     >
-      {/* Front Headlight Light Beams */}
+      {/* Front Headlight Light Beam Cones */}
       <View style={styles.headlightLeft} />
       <View style={styles.headlightRight} />
 
-      {/* Main Aerodynamic Chassis */}
-      <View style={[styles.chassis, isHooked && styles.chassisDrifting]}>
-        {/* Front Wing Spoiler */}
-        <View style={styles.frontWing} />
-
-        {/* Cockpit Windshield */}
-        <View style={styles.cockpit} />
-
-        {/* Energy Core Intake Indicator */}
-        <View style={styles.coreReactor} />
-
-        {/* Rear Wing / Spoiler */}
-        <View style={styles.rearWing} />
-
-        {/* Dual Neon Jet Thruster Exhausts */}
-        <View style={styles.thrusterContainer}>
-          <View style={[styles.thruster, (isHooked || isNitroActive) && styles.thrusterOverdrive]} />
-          <View style={[styles.thruster, (isHooked || isNitroActive) && styles.thrusterOverdrive]} />
-        </View>
-      </View>
+      {/* High-Resolution 2D Cyberpunk Race Car Sprite */}
+      <Image
+        source={require('../../assets/images/cyber_car.png')}
+        style={[styles.carSprite, isHooked && styles.carSpriteDrifting]}
+        resizeMode="contain"
+      />
 
       {/* Nitro Flame Plume Jet */}
       {isNitroActive && (
@@ -86,148 +72,98 @@ const styles = StyleSheet.create({
   },
   headlightLeft: {
     position: 'absolute',
-    top: -12,
+    top: -18,
     left: 2,
-    width: 4,
-    height: 12,
+    width: 6,
+    height: 18,
     backgroundColor: Colors.primaryGlow,
-    opacity: 0.6,
-    borderRadius: 2,
+    opacity: 0.75,
+    borderRadius: 3,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
   },
   headlightRight: {
     position: 'absolute',
-    top: -12,
+    top: -18,
     right: 2,
-    width: 4,
-    height: 12,
+    width: 6,
+    height: 18,
     backgroundColor: Colors.primaryGlow,
-    opacity: 0.6,
-    borderRadius: 2,
+    opacity: 0.75,
+    borderRadius: 3,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
   },
-  chassis: {
+  carSprite: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#0F172A',
-    borderColor: Colors.primary,
-    borderWidth: 1.5,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 2,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  chassisDrifting: {
-    borderColor: Colors.secondary,
-    shadowColor: Colors.secondary,
-    shadowRadius: 10,
-  },
-  frontWing: {
-    width: 18,
-    height: 3,
-    backgroundColor: Colors.primary,
-    borderRadius: 2,
-  },
-  cockpit: {
-    width: 12,
-    height: 14,
-    backgroundColor: '#1E293B',
-    borderColor: Colors.primaryGlow,
-    borderWidth: 1,
-    borderRadius: 3,
-  },
-  coreReactor: {
-    width: 6,
-    height: 6,
-    backgroundColor: Colors.primary,
-    borderRadius: 3,
-    shadowColor: Colors.primary,
-    shadowRadius: 4,
-    shadowOpacity: 1,
-  },
-  rearWing: {
-    width: 20,
-    height: 4,
-    backgroundColor: Colors.borderLight,
-    borderColor: Colors.primary,
-    borderWidth: 1,
-    borderRadius: 2,
-  },
-  thrusterContainer: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  thruster: {
-    width: 4,
-    height: 3,
-    backgroundColor: Colors.secondary,
-    borderRadius: 1,
-    shadowColor: Colors.secondary,
-    shadowRadius: 4,
-    shadowOpacity: 1,
-  },
-  thrusterOverdrive: {
-    backgroundColor: Colors.warning,
-    shadowColor: Colors.warning,
     shadowRadius: 8,
-    height: 6,
+  },
+  carSpriteDrifting: {
+    shadowColor: Colors.secondary,
+    shadowRadius: 14,
+    shadowOpacity: 1,
+  },
+  nitroPlumeContainer: {
+    position: 'absolute',
+    bottom: -22,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    width: 18,
+    height: 24,
+    zIndex: 90,
+  },
+  nitroOuterGlow: {
+    width: 16,
+    height: 22,
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+    opacity: 0.9,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+  },
+  nitroInnerCore: {
+    position: 'absolute',
+    top: 0,
+    width: 8,
+    height: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 4,
+    shadowColor: '#FFFFFF',
+    shadowRadius: 8,
+    shadowOpacity: 1,
   },
   driftSparkLeft: {
     position: 'absolute',
     bottom: 2,
-    left: -4,
-    width: 4,
-    height: 4,
+    left: -6,
+    width: 6,
+    height: 6,
     backgroundColor: Colors.warning,
-    borderRadius: 2,
+    borderRadius: 3,
     shadowColor: Colors.warning,
-    shadowRadius: 6,
+    shadowRadius: 8,
     shadowOpacity: 1,
   },
   driftSparkRight: {
     position: 'absolute',
     bottom: 2,
-    right: -4,
-    width: 4,
-    height: 4,
-    backgroundColor: Colors.warning,
-    borderRadius: 2,
-    shadowColor: Colors.warning,
-    shadowRadius: 6,
-    shadowOpacity: 1,
-  },
-  nitroPlumeContainer: {
-    position: 'absolute',
-    bottom: -18,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    width: 14,
-    height: 18,
-    zIndex: 90,
-  },
-  nitroOuterGlow: {
-    width: 12,
-    height: 16,
-    backgroundColor: Colors.primary,
-    borderRadius: 6,
-    opacity: 0.8,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 10,
-  },
-  nitroInnerCore: {
-    position: 'absolute',
-    top: 0,
+    right: -6,
     width: 6,
-    height: 10,
-    backgroundColor: '#FFFFFF',
+    height: 6,
+    backgroundColor: Colors.warning,
     borderRadius: 3,
-    shadowColor: '#FFFFFF',
-    shadowRadius: 6,
+    shadowColor: Colors.warning,
+    shadowRadius: 8,
     shadowOpacity: 1,
   },
 });
