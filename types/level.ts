@@ -1,3 +1,5 @@
+import { DriftAnchor } from './physics';
+
 export enum LevelDifficulty {
   EASY = 'EASY',
   MEDIUM = 'MEDIUM',
@@ -16,13 +18,14 @@ export interface LevelReward {
   unlockItemSkinId?: string;
 }
 
-export interface RelativeObstacle {
-  xRatio: number;      // 0.0 to 1.0 relative to arena width
-  yRatio: number;      // 0.0 to 1.0 relative to arena height
-  widthRatio: number;  // relative to arena width
-  heightRatio: number; // relative to arena height
-  color?: string;
+export interface RelativeAnchor {
+  id: string;
   name?: string;
+  xRatio: number;
+  yRatio: number;
+  radius?: number;     // default 16
+  activeRange?: number;// default 160
+  color?: string;
 }
 
 export interface ILevel {
@@ -36,7 +39,8 @@ export interface ILevel {
   requirements: LevelRequirement;
   rewards: LevelReward;
   startPosRatio?: { x: number; y: number };
-  startDirectionIndex?: number; // 0: UP, 1: RIGHT, 2: DOWN, 3: LEFT
-  obstacles?: RelativeObstacle[];
+  startAngle?: number; // In degrees (0 = UP)
+  anchors?: RelativeAnchor[];
+  finishLineYRatio?: number; // Default 0.08
   completionScore?: number;
 }
