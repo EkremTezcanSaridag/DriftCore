@@ -17,6 +17,8 @@ import { CyberCar } from '../components/game/CyberCar';
 import { DriftAnchor } from '../components/game/DriftAnchor';
 import { LaserBeam } from '../components/game/LaserBeam';
 import { SkidMarks } from '../components/game/SkidMarks';
+import { TrackRenderer } from '../components/game/TrackRenderer';
+import { TrackProgressBar } from '../components/game/TrackProgressBar';
 import { Card } from '../components/ui/Card';
 import { Colors } from '../constants/colors';
 import { Typography } from '../constants/typography';
@@ -41,8 +43,8 @@ export default function GameScreen() {
   const activeLevelId = searchParams.levelId || storeActiveLevelId || 'level_01';
   const currentLevel = LevelRegistry.getLevelById(activeLevelId);
 
-  // Arena dimensions measured on layout
-  const [arenaDimensions, setArenaDimensions] = useState<{
+  // Viewport dimensions measured on layout
+  const [viewportDimensions, setViewportDimensions] = useState<{
     width: number;
     height: number;
   }>({ width: 0, height: 0 });
@@ -62,12 +64,15 @@ export default function GameScreen() {
   // New High Score Flag for current session
   const [isNewHighScore, setIsNewHighScore] = useState(false);
 
-  // Visual Render States (Synced from tick ref at 60 FPS)
+  // Camera & Render States
+  const [cameraY, setCameraY] = useState<number>(0);
+  const [trackProgress, setTrackProgress] = useState<number>(0);
+
   const [carRenderState, setCarRenderState] = useState<CyberCarState>({
-    position: { x: 120, y: 550 },
-    velocity: { x: 0, y: -230 },
+    position: { x: 120, y: 2200 },
+    velocity: { x: 0, y: -240 },
     angle: 0,
-    speed: 230,
+    speed: 240,
     isHooked: false,
     activeAnchorId: null,
     orbitRadius: 0,
@@ -81,18 +86,21 @@ export default function GameScreen() {
   const [activeHookAnchor, setActiveHookAnchor] = useState<DriftAnchorType | null>(null);
   const [perfectDriftText, setPerfectDriftText] = useState<string | null>(null);
 
-  // High-frequency mutable refs for 60 FPS physics tick loop
+  // Mutable high-frequency refs for 60 FPS tick loop
   const carStateRef = useRef<CyberCarState>({ ...carRenderState });
   const anchorsRef = useRef<DriftAnchorType[]>([]);
   const skidMarksRef = useRef<SkidMark[]>([]);
+  const cameraYRef = useRef<number>(0);
   const isHoldingTouchRef = useRef<boolean>(false);
   const scoreAccumulatorRef = useRef<number>(0);
-  const arenaWidthRef = useRef<number>(0);
-  const arenaHeightRef = useRef<number>(0);
+  const viewportWidthRef = useRef<number>(0);
+  const viewportHeightRef = useRef<number>(0);
   const gameStateRef = useRef<GameState>(GameState.READY);
   const currentLevelRef = useRef<ILevel>(currentLevel);
   const isInitializedRef = useRef<boolean>(false);
-  const finishLineYRef = useRef<number>(50);
+  const startYRef = useRef<number>(2250);
+  const finishLineYRef = useRef<number>(120);
+  const totalTrackLengthRef = useRef<number>(2400);
 
   // Sync refs
   useEffect(() => {
@@ -112,24 +120,35 @@ export default function GameScreen() {
     });
   }, [setHighScore]);
 
-  // Initialize Sling-Drift Game Session
+  // Initialize Vertical Scrolling Track Session
   const initGameSession = useCallback(
     (width: number, height: number, level: ILevel) => {
       if (width <= 50 || height <= 50) return;
 
-      arenaWidthRef.current = width;
-      arenaHeightRef.current = height;
-      finishLineYRef.current = Math.round(height * (level.finishLineYRatio ?? 0.08));
+      viewportWidthRef.current = width;
+      viewportHeightRef.current = height;
+      totalTrackLengthRef.current = level.trackLength || 2400;
+      finishLineYRef.current = level.finishLineY ?? 120;
+      startYRef.current = level.startPosRatio.yWorld;
 
-      // Calculate initial car start position
-      const startRatio = level.startPosRatio || { x: 0.3, y: 0.88 };
+      // Start Car in world space
       const startPos: Vector2D = {
-        x: Math.round(width * startRatio.x),
-        y: Math.round(height * startRatio.y),
+        x: Math.round(width * level.startPosRatio.x),
+        y: level.startPosRatio.yWorld,
       };
 
       const startAngle = level.startAngle ?? 0;
-      const initialSpeed = Config.gameplay.CORE_SPEED || 230;
+      const initialSpeed = 240;
+
+      // Center initial camera on car
+      const initialCameraY = Math.max(
+        0,
+        Math.min(
+          totalTrackLengthRef.current - height,
+          startPos.y - height * 0.72
+        )
+      );
+      cameraYRef.current = initialCameraY;
 
       const initialCarState: CyberCarState = {
         position: startPos,
@@ -144,18 +163,17 @@ export default function GameScreen() {
         driftScoreMultiplier: 1,
       };
 
-      // Calculate track anchors from relative level coordinates
-      const relAnchors = level.anchors || [];
-      const calculatedAnchors: DriftAnchorType[] = relAnchors.map((rel) => ({
-        id: rel.id,
-        name: rel.name,
+      // Calculate track anchors in world space
+      const calculatedAnchors: DriftAnchorType[] = (level.anchors || []).map((anchorData) => ({
+        id: anchorData.id,
+        name: anchorData.name,
         position: {
-          x: Math.round(width * rel.xRatio),
-          y: Math.round(height * rel.yRatio),
+          x: Math.round(width * anchorData.xRatio),
+          y: anchorData.yWorld,
         },
-        radius: rel.radius ?? 16,
-        activeRange: rel.activeRange ?? 150,
-        color: rel.color ?? Colors.secondary,
+        radius: anchorData.radius ?? 16,
+        activeRange: anchorData.activeRange ?? 160,
+        color: anchorData.color ?? Colors.secondary,
       }));
 
       carStateRef.current = { ...initialCarState };
@@ -168,6 +186,8 @@ export default function GameScreen() {
       setSkidMarks([]);
       setActiveHookAnchor(null);
       setCarRenderState(initialCarState);
+      setCameraY(initialCameraY);
+      setTrackProgress(0);
       setScore(0);
       setIsNewHighScore(false);
       setPerfectDriftText(null);
@@ -179,25 +199,23 @@ export default function GameScreen() {
     [setScore, setGameState]
   );
 
-  // Handle Arena Layout Measurement
+  // Handle Viewport Layout Measurement
   const handleArenaLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
     if (width > 50 && height > 50) {
-      setArenaDimensions({ width, height });
+      setViewportDimensions({ width, height });
       initGameSession(width, height, currentLevel);
     }
   };
 
-  // Touch Handlers for Sling-Drift Hook Action
+  // Touch Handlers for Sling-Drift Hook
   const handleTouchDown = () => {
     if (!isInitializedRef.current || gameStateRef.current !== GameState.PLAYING) return;
 
     isHoldingTouchRef.current = true;
     const currentCar = carStateRef.current;
 
-    // Check if within reach of an anchor
     const bestAnchor = driftPhysicsSystem.findBestAnchor(currentCar.position, anchorsRef.current);
-
     if (bestAnchor) {
       const hookedCar = driftPhysicsSystem.attachHook(currentCar, bestAnchor);
       carStateRef.current = hookedCar;
@@ -223,8 +241,8 @@ export default function GameScreen() {
       setCarRenderState({ ...releasedCar });
 
       // Perfect Drift feedback
-      setPerfectDriftText('PERFECT DRIFT! +50');
-      scoreAccumulatorRef.current += 50;
+      setPerfectDriftText('PERFECT DRIFT! +60');
+      scoreAccumulatorRef.current += 60;
       setTimeout(() => setPerfectDriftText(null), 1200);
 
       try {
@@ -242,6 +260,9 @@ export default function GameScreen() {
 
       let car = { ...carStateRef.current };
       const currentAnchors = anchorsRef.current;
+      const height = viewportHeightRef.current;
+      const width = viewportWidthRef.current;
+      const totalLength = totalTrackLengthRef.current;
 
       // 1. Check Hook Connection
       if (isHoldingTouchRef.current && !car.isHooked) {
@@ -288,13 +309,12 @@ export default function GameScreen() {
             };
 
             const updatedMarks = [...skidMarksRef.current, newMark];
-            if (updatedMarks.length > 40) updatedMarks.shift();
+            if (updatedMarks.length > 50) updatedMarks.shift();
             skidMarksRef.current = updatedMarks;
             setSkidMarks([...updatedMarks]);
           }
 
-          // Accumulate higher score while actively drifting
-          scoreAccumulatorRef.current += deltaTime * 40;
+          scoreAccumulatorRef.current += deltaTime * 50;
         }
       } else {
         // Straight motion
@@ -304,32 +324,40 @@ export default function GameScreen() {
 
       carStateRef.current = car;
 
-      // 3. Track Boundary Collision Check
-      const width = arenaWidthRef.current;
-      const height = arenaHeightRef.current;
-      const CAR_RADIUS = 12;
+      // 3. Smooth Camera Follow (Target at ~72% from top of viewport)
+      const targetCamY = car.position.y - height * 0.72;
+      const clampedTargetCamY = Math.max(0, Math.min(totalLength - height, targetCamY));
+      cameraYRef.current += (clampedTargetCamY - cameraYRef.current) * 0.14;
+      const currentCameraY = cameraYRef.current;
+      setCameraY(currentCameraY);
 
+      // 4. Track Boundary Collision Check
+      const CAR_RADIUS = 12;
       if (
         car.position.x - CAR_RADIUS <= 6 ||
         car.position.x + CAR_RADIUS >= width - 6 ||
-        car.position.y + CAR_RADIUS >= height + 10
+        car.position.y >= totalLength + 20
       ) {
         triggerGameOver();
         return;
       }
 
-      // 4. Finish Line Reached Check
+      // 5. Finish Line Reached Check
       if (car.position.y <= finishLineYRef.current) {
         const finalScore = Math.floor(scoreAccumulatorRef.current);
         triggerLevelComplete(finalScore);
         return;
       }
 
-      // 5. Update Score
+      // 6. Track Progress Calculation (0.0 to 1.0)
+      const startY = startYRef.current;
+      const finishY = finishLineYRef.current;
+      const currentProg = (startY - car.position.y) / (startY - finishY);
+      setTrackProgress(Math.max(0, Math.min(1, currentProg)));
+
+      // 7. Update Score & Render State
       const currentScoreInt = Math.floor(scoreAccumulatorRef.current);
       setScore(currentScoreInt);
-
-      // 6. Update Render State
       setCarRenderState({ ...car });
     };
 
@@ -376,7 +404,7 @@ export default function GameScreen() {
           lastSavedAt: Date.now(),
         },
         highScore: newBest,
-        totalCoins: (existing?.totalCoins ?? 0) + (currentLevel.rewards?.coins ?? 150),
+        totalCoins: (existing?.totalCoins ?? 0) + (currentLevel.rewards?.coins ?? 200),
         unlockedLevelIds: unlockedLevels,
         levelStars: starsMap,
         unlockedItemIds: existing?.unlockedItemIds ?? ['skin_default'],
@@ -462,7 +490,7 @@ export default function GameScreen() {
   };
 
   const handleRestart = () => {
-    initGameSession(arenaWidthRef.current, arenaHeightRef.current, currentLevel);
+    initGameSession(viewportWidthRef.current, viewportHeightRef.current, currentLevel);
     mainGameEngine.start();
   };
 
@@ -479,65 +507,84 @@ export default function GameScreen() {
         {/* Game HUD */}
         <GameHUD onPausePress={handlePause} />
 
-        {/* Sling-Drift Track Container */}
+        {/* Viewport Canvas Container */}
         <View style={styles.canvasContainer}>
           <Card
             variant="neon"
             style={styles.canvasCard}
             onLayout={handleArenaLayout}
           >
-            {arenaDimensions.width > 0 && arenaDimensions.height > 0 && (
+            {viewportDimensions.width > 0 && viewportDimensions.height > 0 && (
               <>
-                {/* Neon Finish Gate Banner */}
-                <View
-                  pointerEvents="none"
-                  style={[
-                    styles.finishGate,
-                    {
-                      top: finishLineYRef.current - 14,
-                      width: arenaDimensions.width - 24,
-                    },
-                  ]}
-                >
-                  <Text style={styles.finishGateText}>🏁 FINISH LINE 🏁</Text>
-                </View>
+                {/* 1. Scrolling Track Road & Guardrails */}
+                <TrackRenderer
+                  cameraY={cameraY}
+                  viewportWidth={viewportDimensions.width}
+                  viewportHeight={viewportDimensions.height}
+                  totalTrackLength={totalTrackLengthRef.current}
+                  finishLineY={finishLineYRef.current}
+                />
 
-                {/* Tire Skid Marks */}
-                <SkidMarks marks={skidMarks} />
+                {/* 2. Scrolling Tire Skid Marks */}
+                <SkidMarks
+                  marks={skidMarks.map((m) => ({
+                    ...m,
+                    leftWheel: { x: m.leftWheel.x, y: m.leftWheel.y - cameraY },
+                    rightWheel: { x: m.rightWheel.x, y: m.rightWheel.y - cameraY },
+                  }))}
+                />
 
-                {/* Corner Drift Anchors */}
+                {/* 3. Scrolling Corner Drift Anchors */}
                 {anchors.map((anchor) => (
                   <DriftAnchor
                     key={anchor.id}
-                    anchor={anchor}
+                    anchor={{
+                      ...anchor,
+                      position: {
+                        x: anchor.position.x,
+                        y: anchor.position.y - cameraY,
+                      },
+                    }}
                     isActive={activeHookAnchor?.id === anchor.id}
                   />
                 ))}
 
-                {/* Laser Tether Cable between Car and Anchor */}
+                {/* 4. Scrolling Laser Hook Cable */}
                 {carRenderState.isHooked && activeHookAnchor && (
                   <LaserBeam
-                    from={carRenderState.position}
-                    to={activeHookAnchor.position}
+                    from={{
+                      x: carRenderState.position.x,
+                      y: carRenderState.position.y - cameraY,
+                    }}
+                    to={{
+                      x: activeHookAnchor.position.x,
+                      y: activeHookAnchor.position.y - cameraY,
+                    }}
                     color={activeHookAnchor.color || Colors.primary}
                   />
                 )}
 
-                {/* Cyberpunk Car Model */}
+                {/* 5. Cyberpunk Neon Car Model */}
                 <CyberCar
-                  position={carRenderState.position}
+                  position={{
+                    x: carRenderState.position.x,
+                    y: carRenderState.position.y - cameraY,
+                  }}
                   angle={carRenderState.angle}
                   isHooked={carRenderState.isHooked}
                 />
 
-                {/* Perfect Drift Floating Toast */}
+                {/* 6. Vertical Neon Progress Bar */}
+                <TrackProgressBar progress={trackProgress} />
+
+                {/* 7. Perfect Drift Toast Feedback */}
                 {perfectDriftText && (
                   <View pointerEvents="none" style={styles.perfectToast}>
                     <Text style={styles.perfectToastText}>{perfectDriftText}</Text>
                   </View>
                 )}
 
-                {/* Full-screen Hold & Release Sling-Drift Touch Layer */}
+                {/* 8. Full-screen Hold & Release Touch Layer */}
                 <Pressable
                   style={[StyleSheet.absoluteFillObject, { zIndex: 99999 }]}
                   onPressIn={handleTouchDown}
@@ -596,42 +643,27 @@ const styles = StyleSheet.create({
   },
   canvasCard: {
     flex: 1,
-    backgroundColor: '#090D16',
+    backgroundColor: '#070B14',
     borderWidth: 2,
     borderColor: Colors.primaryGlow,
     borderRadius: Radius.xl,
     overflow: 'hidden',
   },
-  finishGate: {
-    position: 'absolute',
-    left: 12,
-    height: 28,
-    borderWidth: 1.5,
-    borderColor: Colors.success,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0, 255, 102, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderStyle: 'dashed',
-    zIndex: 30,
-  },
-  finishGateText: {
-    fontSize: 11,
-    fontWeight: Typography.weights.black,
-    color: Colors.success,
-    letterSpacing: Typography.letterSpacing.arcade,
-  },
   perfectToast: {
     position: 'absolute',
-    top: '25%',
+    top: '22%',
     alignSelf: 'center',
-    backgroundColor: 'rgba(255, 0, 127, 0.25)',
+    backgroundColor: 'rgba(255, 0, 127, 0.3)',
     borderColor: Colors.secondary,
     borderWidth: 1.5,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.xs,
     borderRadius: Radius.full,
     zIndex: 200,
+    shadowColor: Colors.secondary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
   },
   perfectToastText: {
     fontSize: Typography.sizes.sm,
