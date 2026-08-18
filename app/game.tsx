@@ -112,7 +112,7 @@ export default function GameScreen() {
       arenaHeightRef.current = height;
 
       // Start Core at level initial position ratio
-      const startRatio = level.startPosRatio || { x: 0.5, y: 0.82 };
+      const startRatio = level.startPosRatio || { x: 0.5, y: 0.85 };
       const startPos = {
         x: Math.round(width * startRatio.x),
         y: Math.round(height * startRatio.y),
@@ -141,6 +141,7 @@ export default function GameScreen() {
       setCoreTrail([]);
       setScore(0);
       setIsNewHighScore(false);
+      gameStateRef.current = GameState.PLAYING;
       setGameState(GameState.PLAYING);
     },
     [setScore, setGameState]
@@ -157,7 +158,13 @@ export default function GameScreen() {
 
   // Tap Control: Turn Core 90 degrees Clockwise
   const handleTapTurn = () => {
-    if (gameStateRef.current !== GameState.PLAYING) return;
+    const currentStoreState = useGameStore.getState().gameState;
+    if (gameStateRef.current !== GameState.PLAYING && currentStoreState !== GameState.PLAYING) {
+      return;
+    }
+
+    // Turn 90 degrees clockwise (UP -> RIGHT -> DOWN -> LEFT -> UP)
+    dirIndexRef.current = (dirIndexRef.current + 1) % DIRECTIONS.length;
 
     // Trigger subtle haptic feedback
     try {
@@ -165,9 +172,6 @@ export default function GameScreen() {
     } catch {
       // Haptics fallback
     }
-
-    // Turn 90 degrees clockwise (UP -> RIGHT -> DOWN -> LEFT -> UP)
-    dirIndexRef.current = (dirIndexRef.current + 1) % DIRECTIONS.length;
   };
 
   // Main Game Loop Subscriber Tick
@@ -249,6 +253,7 @@ export default function GameScreen() {
   // Trigger Level Complete
   const triggerLevelComplete = (finalScore: number) => {
     mainGameEngine.stop();
+    gameStateRef.current = GameState.LEVEL_COMPLETE;
     setGameState(GameState.LEVEL_COMPLETE);
 
     // Unlock Level 2 & award 3 stars for Level 1
@@ -311,6 +316,7 @@ export default function GameScreen() {
   // Trigger Game Over
   const triggerGameOver = () => {
     mainGameEngine.stop();
+    gameStateRef.current = GameState.GAME_OVER;
     setGameState(GameState.GAME_OVER);
 
     const finalScore = Math.floor(scoreAccumulatorRef.current);
@@ -359,10 +365,12 @@ export default function GameScreen() {
   // Pause / Resume Handlers
   const handlePause = () => {
     mainGameEngine.stop();
+    gameStateRef.current = GameState.PAUSED;
     setGameState(GameState.PAUSED);
   };
 
   const handleResume = () => {
+    gameStateRef.current = GameState.PLAYING;
     setGameState(GameState.PLAYING);
     mainGameEngine.start();
   };
@@ -374,6 +382,7 @@ export default function GameScreen() {
 
   const handleMainMenu = () => {
     mainGameEngine.stop();
+    gameStateRef.current = GameState.IDLE;
     setGameState(GameState.IDLE);
     router.replace('/');
   };
@@ -386,62 +395,63 @@ export default function GameScreen() {
 
         {/* Game Arena Container */}
         <View style={styles.canvasContainer}>
-          <Pressable
-            style={styles.tapArea}
-            onPress={handleTapTurn}
+          <Card
+            variant="neon"
+            style={styles.canvasCard}
+            onLayout={handleArenaLayout}
           >
-            <Card
-              variant="neon"
-              style={styles.canvasCard}
-              onLayout={handleArenaLayout}
-            >
-              {arenaDimensions.width > 0 && arenaDimensions.height > 0 && (
-                <>
-                  {/* Finish Zone Gate Indicator */}
-                  <View
-                    pointerEvents="none"
+            {arenaDimensions.width > 0 && arenaDimensions.height > 0 && (
+              <>
+                {/* Finish Zone Gate Indicator */}
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    top: arenaDimensions.height * 0.06,
+                    left: arenaDimensions.width * 0.2,
+                    width: arenaDimensions.width * 0.6,
+                    height: 22,
+                    borderWidth: 1.5,
+                    borderColor: Colors.success,
+                    borderRadius: 11,
+                    backgroundColor: 'rgba(0, 255, 102, 0.12)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderStyle: 'dashed',
+                  }}
+                >
+                  <Text
                     style={{
-                      position: 'absolute',
-                      top: arenaDimensions.height * 0.06,
-                      left: arenaDimensions.width * 0.2,
-                      width: arenaDimensions.width * 0.6,
-                      height: 22,
-                      borderWidth: 1.5,
-                      borderColor: Colors.success,
-                      borderRadius: 11,
-                      backgroundColor: 'rgba(0, 255, 102, 0.12)',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      borderStyle: 'dashed',
+                      fontSize: 9,
+                      fontWeight: Typography.weights.bold,
+                      color: Colors.success,
+                      letterSpacing: Typography.letterSpacing.wider,
                     }}
                   >
-                    <Text
-                      style={{
-                        fontSize: 9,
-                        fontWeight: Typography.weights.bold,
-                        color: Colors.success,
-                        letterSpacing: Typography.letterSpacing.wider,
-                      }}
-                    >
-                      BİTİŞ SEKTÖRÜ (FINISH)
-                    </Text>
-                  </View>
+                    BİTİŞ SEKTÖRÜ (FINISH)
+                  </Text>
+                </View>
 
-                  {/* Deterministic Level Obstacles Rendering */}
-                  {obstacles.map((obs, idx) => (
-                    <Obstacle key={`obs-${idx}`} bounds={obs.bounds} color={obs.color} />
-                  ))}
+                {/* Deterministic Level Obstacles Rendering */}
+                {obstacles.map((obs, idx) => (
+                  <Obstacle key={`obs-${idx}`} bounds={obs.bounds} color={obs.color} />
+                ))}
 
-                  {/* Core Player Rendering */}
-                  <Core
-                    position={coreRenderPos}
-                    radius={Config.gameplay.CORE_RADIUS}
-                    trail={coreTrail}
-                  />
-                </>
-              )}
-            </Card>
-          </Pressable>
+                {/* Core Player Rendering */}
+                <Core
+                  position={coreRenderPos}
+                  radius={Config.gameplay.CORE_RADIUS}
+                  trail={coreTrail}
+                />
+
+                {/* Full Arena Touch Target Overlay for 100% Instant Tap Turn */}
+                <Pressable
+                  style={StyleSheet.absoluteFillObject}
+                  onPress={handleTapTurn}
+                />
+              </>
+            )}
+          </Card>
         </View>
 
         {/* Pause Modal Overlay */}
@@ -489,9 +499,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 12,
     paddingVertical: 12,
-  },
-  tapArea: {
-    flex: 1,
   },
   canvasCard: {
     flex: 1,
