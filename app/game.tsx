@@ -115,6 +115,7 @@ export default function GameScreen() {
   const coinsCountRef = useRef<number>(0);
   const hookStartTimeRef = useRef<number>(0);
   const nitroEndTimeRef = useRef<number>(0);
+  const wasNitroActiveRef = useRef<boolean>(false);
   const spawnProtectionTimerRef = useRef<number>(1.0);
   const viewportWidthRef = useRef<number>(0);
   const viewportHeightRef = useRef<number>(0);
@@ -142,6 +143,10 @@ export default function GameScreen() {
         setHighScore(savedData.highScore);
       }
     });
+
+    return () => {
+      soundService.stopAllLoops();
+    };
   }, [setHighScore]);
 
   // Spawn dynamic particle burst
@@ -242,7 +247,8 @@ export default function GameScreen() {
       shardsCountRef.current = 0;
       coinsCountRef.current = 0;
       nitroEndTimeRef.current = 0;
-      spawnProtectionTimerRef.current = 1.0; // 1 second spawn safety buffer
+      wasNitroActiveRef.current = false;
+      spawnProtectionTimerRef.current = 1.0;
 
       setAnchors(calculatedAnchors);
       setCollectibles(calculatedCollectibles);
@@ -259,6 +265,9 @@ export default function GameScreen() {
       setScore(0);
       setIsNewHighScore(false);
       setPerfectDriftText(null);
+
+      // Start continuous car engine hum
+      soundService.startEngine();
 
       isInitializedRef.current = true;
       gameStateRef.current = GameState.PLAYING;
@@ -292,6 +301,7 @@ export default function GameScreen() {
       setCarRenderState({ ...hookedCar });
 
       soundService.playHook();
+      soundService.startDriftScreech();
       try {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       } catch {}
@@ -310,6 +320,9 @@ export default function GameScreen() {
       carStateRef.current = releasedCar;
       setActiveHookAnchor(null);
 
+      // Stop tire screech immediately upon release
+      soundService.stopDriftScreech();
+
       // Evaluate Perfect Drift & Combo Boost
       if (hookDuration >= 0.2) {
         const nextCombo = Math.min(5, comboMultiplierRef.current + 1);
@@ -323,13 +336,14 @@ export default function GameScreen() {
         // Trigger Nitro Boost for 0.6s
         nitroEndTimeRef.current = Date.now() + 600;
         setIsNitroActive(true);
+        soundService.setEngineNitro(true);
+        soundService.playTurboBlowoff();
 
-        soundService.playBoost();
         spawnParticles(currentCar.position.x, currentCar.position.y, Colors.primary, 12);
       } else {
         setPerfectDriftText('GOOD DRIFT! +25');
         scoreAccumulatorRef.current += 25;
-        soundService.playBoost();
+        soundService.playTurboBlowoff();
       }
 
       setCarRenderState({ ...releasedCar });
@@ -368,15 +382,21 @@ export default function GameScreen() {
           hookStartTimeRef.current = Date.now();
           setActiveHookAnchor(bestAnchor);
           soundService.playHook();
+          soundService.startDriftScreech();
           try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
           } catch {}
         }
       }
 
-      // Check Nitro State
+      // Check Nitro State & Engine Pitch
       const nitroActive = Date.now() < nitroEndTimeRef.current;
       setIsNitroActive(nitroActive);
+      if (nitroActive !== wasNitroActiveRef.current) {
+        wasNitroActiveRef.current = nitroActive;
+        soundService.setEngineNitro(nitroActive);
+      }
+
       const effectiveSpeed = nitroActive ? 300 : 240;
       car.speed = effectiveSpeed;
 
@@ -566,6 +586,7 @@ export default function GameScreen() {
   // Trigger Level Complete
   const triggerLevelComplete = (finalScore: number) => {
     mainGameEngine.stop();
+    soundService.stopAllLoops();
     gameStateRef.current = GameState.LEVEL_COMPLETE;
     setGameState(GameState.LEVEL_COMPLETE);
 
@@ -627,6 +648,7 @@ export default function GameScreen() {
   // Trigger Game Over
   const triggerGameOver = () => {
     mainGameEngine.stop();
+    soundService.stopAllLoops();
     gameStateRef.current = GameState.GAME_OVER;
     setGameState(GameState.GAME_OVER);
 
@@ -674,6 +696,7 @@ export default function GameScreen() {
   // Pause / Resume / Restart Handlers
   const handlePause = () => {
     mainGameEngine.stop();
+    soundService.stopAllLoops();
     gameStateRef.current = GameState.PAUSED;
     setGameState(GameState.PAUSED);
   };
@@ -681,16 +704,19 @@ export default function GameScreen() {
   const handleResume = () => {
     gameStateRef.current = GameState.PLAYING;
     setGameState(GameState.PLAYING);
+    soundService.startEngine();
     mainGameEngine.start();
   };
 
   const handleRestart = () => {
+    soundService.stopAllLoops();
     initGameSession(viewportWidthRef.current, viewportHeightRef.current, currentLevel);
     mainGameEngine.start();
   };
 
   const handleMainMenu = () => {
     mainGameEngine.stop();
+    soundService.stopAllLoops();
     gameStateRef.current = GameState.IDLE;
     setGameState(GameState.IDLE);
     router.replace('/');
