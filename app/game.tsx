@@ -82,9 +82,9 @@ export default function GameScreen() {
 
   const [carRenderState, setCarRenderState] = useState<CyberCarState>({
     position: { x: 120, y: 2450 },
-    velocity: { x: 0, y: -250 },
+    velocity: { x: 0, y: -240 },
     angle: 0,
-    speed: 250,
+    speed: 240,
     isHooked: false,
     activeAnchorId: null,
     orbitRadius: 0,
@@ -114,7 +114,7 @@ export default function GameScreen() {
   const coinsCountRef = useRef<number>(0);
   const hookStartTimeRef = useRef<number>(0);
   const nitroEndTimeRef = useRef<number>(0);
-  const spawnProtectionTimerRef = useRef<number>(0);
+  const spawnProtectionTimerRef = useRef<number>(0.8);
   const viewportWidthRef = useRef<number>(0);
   const viewportHeightRef = useRef<number>(0);
   const gameStateRef = useRef<GameState>(GameState.READY);
@@ -174,7 +174,7 @@ export default function GameScreen() {
       finishLineYRef.current = level.finishLineY ?? 120;
       startYRef.current = level.startPosRatio.yWorld;
 
-      // Start Car in world space
+      // Start Car safely in left lane
       const startPos: Vector2D = {
         x: Math.round(width * level.startPosRatio.x),
         y: level.startPosRatio.yWorld,
@@ -240,7 +240,7 @@ export default function GameScreen() {
       shardsCountRef.current = 0;
       coinsCountRef.current = 0;
       nitroEndTimeRef.current = 0;
-      spawnProtectionTimerRef.current = 0.6; // 0.6s spawn safety buffer
+      spawnProtectionTimerRef.current = 1.0; // 1 second spawn safety buffer
 
       setAnchors(calculatedAnchors);
       setCollectibles(calculatedCollectibles);
@@ -341,11 +341,15 @@ export default function GameScreen() {
     const updateTick = (deltaTime: number) => {
       if (!isInitializedRef.current || gameStateRef.current !== GameState.PLAYING) return;
 
-      let car = { ...carStateRef.current };
-      const currentAnchors = anchorsRef.current;
       const height = viewportHeightRef.current;
       const width = viewportWidthRef.current;
       const totalLength = totalTrackLengthRef.current;
+
+      // CRITICAL: NEVER run physics or collisions on zero/unmeasured viewport!
+      if (width < 100 || height < 100) return;
+
+      let car = { ...carStateRef.current };
+      const currentAnchors = anchorsRef.current;
 
       if (spawnProtectionTimerRef.current > 0) {
         spawnProtectionTimerRef.current -= deltaTime;
@@ -381,7 +385,7 @@ export default function GameScreen() {
           const dy = car.position.y - anchor.position.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          if (dist <= anchor.radius + 10 && spawnProtectionTimerRef.current <= 0) {
+          if (dist <= anchor.radius + 6 && spawnProtectionTimerRef.current <= 0) {
             spawnParticles(car.position.x, car.position.y, Colors.secondary, 25);
             triggerGameOver();
             return;
@@ -508,12 +512,12 @@ export default function GameScreen() {
       setCameraY(currentCameraY);
 
       // 6. Track Boundary Collision Check (with Spawn Protection)
-      const CAR_RADIUS = 14;
+      const CAR_RADIUS = 12;
       if (
         spawnProtectionTimerRef.current <= 0 &&
-        (car.position.x - CAR_RADIUS <= 2 ||
-          car.position.x + CAR_RADIUS >= width - 2 ||
-          car.position.y >= totalLength + 20)
+        (car.position.x - CAR_RADIUS <= -4 ||
+          car.position.x + CAR_RADIUS >= width + 4 ||
+          car.position.y >= totalLength + 100)
       ) {
         spawnParticles(car.position.x, car.position.y, Colors.secondary, 25);
         triggerGameOver();

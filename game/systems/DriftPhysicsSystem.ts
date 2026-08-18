@@ -3,14 +3,15 @@ import { CyberCarState, DriftAnchor } from '../../types/physics';
 
 /**
  * DriftCore — Ultra-Responsive 2D Sling-Drift Physics Engine
- * Bulletproof circular orbit drift dynamics, smooth elastic tethering, and snappy launch.
+ * Bulletproof circular orbit drift dynamics, smooth continuous tethering, and snappy launch.
  */
 export class DriftPhysicsSystem {
   /**
    * Update straight driving movement along current heading angle
    */
   public updateStraightMotion(car: CyberCarState, deltaTime: number): CyberCarState {
-    const angleRad = (car.angle * Math.PI) / 180;
+    const safeAngle = Number.isFinite(car.angle) ? car.angle : 0;
+    const angleRad = (safeAngle * Math.PI) / 180;
     const vx = Math.sin(angleRad) * car.speed;
     const vy = -Math.cos(angleRad) * car.speed; // UP is negative Y
 
@@ -46,18 +47,17 @@ export class DriftPhysicsSystem {
   }
 
   /**
-   * Attach laser hook to anchor and compute initial orbit radius and direction
+   * Attach laser hook to anchor and compute initial orbit radius without teleportation
    */
   public attachHook(car: CyberCarState, anchor: DriftAnchor): CyberCarState {
     const dx = car.position.x - anchor.position.x;
     const dy = car.position.y - anchor.position.y;
-    const rawDist = Math.sqrt(dx * dx + dy * dy);
-    // Clamp initial orbit radius so car stays strictly within safe lane bounds
-    const radius = Math.max(35, Math.min(105, rawDist));
+    const actualDist = Math.max(25, Math.sqrt(dx * dx + dy * dy));
     const initialOrbitAngle = Math.atan2(dy, dx);
 
     // Determine orbit rotation direction via 2D cross product
-    const angleRad = (car.angle * Math.PI) / 180;
+    const safeAngle = Number.isFinite(car.angle) ? car.angle : 0;
+    const angleRad = (safeAngle * Math.PI) / 180;
     const headingVx = Math.sin(angleRad);
     const headingVy = -Math.cos(angleRad);
 
@@ -68,7 +68,7 @@ export class DriftPhysicsSystem {
       ...car,
       isHooked: true,
       activeAnchorId: anchor.id,
-      orbitRadius: radius,
+      orbitRadius: actualDist,
       orbitAngle: initialOrbitAngle,
       orbitDirection,
     };
@@ -78,11 +78,12 @@ export class DriftPhysicsSystem {
    * Update circular orbit drift motion with oversteer angle
    */
   public updateOrbitMotion(car: CyberCarState, anchor: DriftAnchor, deltaTime: number): CyberCarState {
-    const angularSpeed = (car.speed / Math.max(25, car.orbitRadius)) * car.orbitDirection;
+    const safeRadius = Math.max(25, car.orbitRadius);
+    const angularSpeed = (car.speed / safeRadius) * car.orbitDirection;
     const newOrbitAngle = car.orbitAngle + angularSpeed * deltaTime;
 
-    const newX = anchor.position.x + Math.cos(newOrbitAngle) * car.orbitRadius;
-    const newY = anchor.position.y + Math.sin(newOrbitAngle) * car.orbitRadius;
+    const newX = anchor.position.x + Math.cos(newOrbitAngle) * safeRadius;
+    const newY = anchor.position.y + Math.sin(newOrbitAngle) * safeRadius;
 
     // Tangent angle perpendicular to radius
     const tangentAngleRad = newOrbitAngle + (car.orbitDirection > 0 ? Math.PI / 2 : -Math.PI / 2);
