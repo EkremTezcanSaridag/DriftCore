@@ -478,7 +478,7 @@ export default function GameScreen() {
       setCameraY(currentCameraY);
 
       // 6. Track Boundary Collision Check
-      const CAR_RADIUS = 12;
+      const CAR_RADIUS = 16;
       if (
         car.position.x - CAR_RADIUS <= 6 ||
         car.position.x + CAR_RADIUS >= width - 6 ||

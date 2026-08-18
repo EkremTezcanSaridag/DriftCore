@@ -8,6 +8,7 @@ interface CyberCarProps {
   angle: number; // In degrees (0 = UP)
   isHooked?: boolean;
   isNitroActive?: boolean;
+  scale?: number;
 }
 
 export const CyberCar: React.FC<CyberCarProps> = ({
@@ -15,9 +16,10 @@ export const CyberCar: React.FC<CyberCarProps> = ({
   angle,
   isHooked = false,
   isNitroActive = false,
+  scale = 1.0,
 }) => {
-  const CAR_WIDTH = 32;
-  const CAR_LENGTH = 54;
+  const CAR_WIDTH = 48 * scale;
+  const CAR_LENGTH = 78 * scale;
 
   return (
     <View
@@ -37,7 +39,7 @@ export const CyberCar: React.FC<CyberCarProps> = ({
       <View style={styles.headlightLeft} />
       <View style={styles.headlightRight} />
 
-      {/* High-Resolution 2D Cyberpunk Race Car Sprite */}
+      {/* High-Resolution 2D Cyberpunk Race Car Sprite (Transparent Background) */}
       <Image
         source={require('../../assets/images/cyber_car.png')}
         style={[styles.carSprite, isHooked && styles.carSpriteDrifting]}
@@ -72,98 +74,98 @@ const styles = StyleSheet.create({
   },
   headlightLeft: {
     position: 'absolute',
-    top: -18,
-    left: 2,
-    width: 6,
-    height: 18,
+    top: -24,
+    left: 4,
+    width: 8,
+    height: 24,
     backgroundColor: Colors.primaryGlow,
-    opacity: 0.75,
-    borderRadius: 3,
+    opacity: 0.85,
+    borderRadius: 4,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: 8,
+    shadowRadius: 10,
   },
   headlightRight: {
     position: 'absolute',
-    top: -18,
-    right: 2,
-    width: 6,
-    height: 18,
+    top: -24,
+    right: 4,
+    width: 8,
+    height: 24,
     backgroundColor: Colors.primaryGlow,
-    opacity: 0.75,
-    borderRadius: 3,
+    opacity: 0.85,
+    borderRadius: 4,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: 8,
+    shadowRadius: 10,
   },
   carSprite: {
     width: '100%',
     height: '100%',
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 8,
+    shadowOpacity: 0.9,
+    shadowRadius: 10,
   },
   carSpriteDrifting: {
     shadowColor: Colors.secondary,
-    shadowRadius: 14,
+    shadowRadius: 18,
     shadowOpacity: 1,
   },
   nitroPlumeContainer: {
     position: 'absolute',
-    bottom: -22,
+    bottom: -28,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    width: 18,
-    height: 24,
+    width: 24,
+    height: 30,
     zIndex: 90,
   },
   nitroOuterGlow: {
-    width: 16,
-    height: 22,
+    width: 20,
+    height: 28,
     backgroundColor: Colors.primary,
-    borderRadius: 8,
-    opacity: 0.9,
+    borderRadius: 10,
+    opacity: 0.95,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: 12,
+    shadowRadius: 16,
   },
   nitroInnerCore: {
     position: 'absolute',
     top: 0,
-    width: 8,
-    height: 14,
+    width: 10,
+    height: 18,
     backgroundColor: '#FFFFFF',
-    borderRadius: 4,
+    borderRadius: 5,
     shadowColor: '#FFFFFF',
-    shadowRadius: 8,
+    shadowRadius: 10,
     shadowOpacity: 1,
   },
   driftSparkLeft: {
     position: 'absolute',
-    bottom: 2,
-    left: -6,
-    width: 6,
-    height: 6,
+    bottom: 4,
+    left: -8,
+    width: 8,
+    height: 8,
     backgroundColor: Colors.warning,
-    borderRadius: 3,
+    borderRadius: 4,
     shadowColor: Colors.warning,
-    shadowRadius: 8,
+    shadowRadius: 10,
     shadowOpacity: 1,
   },
   driftSparkRight: {
     position: 'absolute',
-    bottom: 2,
-    right: -6,
-    width: 6,
-    height: 6,
+    bottom: 4,
+    right: -8,
+    width: 8,
+    height: 8,
     backgroundColor: Colors.warning,
-    borderRadius: 3,
+    borderRadius: 4,
     shadowColor: Colors.warning,
-    shadowRadius: 8,
+    shadowRadius: 10,
     shadowOpacity: 1,
   },
 });
