@@ -35,11 +35,7 @@ export const CyberCar: React.FC<CyberCarProps> = ({
         },
       ]}
     >
-      {/* Front Headlight Light Beam Cones */}
-      <View style={styles.headlightLeft} />
-      <View style={styles.headlightRight} />
-
-      {/* High-Resolution 2D Cyberpunk Race Car Sprite (Transparent Background) */}
+      {/* High-Resolution 2D Cyberpunk Race Car Sprite (Pure Transparent) */}
       <Image
         source={require('../../assets/images/cyber_car.png')}
         style={[styles.carSprite, isHooked && styles.carSpriteDrifting]}
@@ -71,34 +67,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 100,
-  },
-  headlightLeft: {
-    position: 'absolute',
-    top: -24,
-    left: 4,
-    width: 8,
-    height: 24,
-    backgroundColor: Colors.primaryGlow,
-    opacity: 0.85,
-    borderRadius: 4,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 10,
-  },
-  headlightRight: {
-    position: 'absolute',
-    top: -24,
-    right: 4,
-    width: 8,
-    height: 24,
-    backgroundColor: Colors.primaryGlow,
-    opacity: 0.85,
-    borderRadius: 4,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 10,
   },
   carSprite: {
     width: '100%',

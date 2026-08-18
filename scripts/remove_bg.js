@@ -3,7 +3,7 @@ const { PNG } = require('pngjs');
 const { jimpAsync } = require('@expo/image-utils');
 
 async function processImage(filePath, threshold = 65) {
-  // Convert JPEG to raw PNG Buffer
+  // Convert to raw PNG Buffer
   const pngBuffer = await jimpAsync({ input: filePath, format: 'image/png' });
   const png = PNG.sync.read(pngBuffer);
   const width = png.width;
@@ -74,8 +74,7 @@ async function processImage(filePath, threshold = 65) {
 }
 
 async function run() {
-  await processImage('assets/images/cyber_car.png', 70);
-  await processImage('assets/images/energy_shard.png', 50);
+  await processImage('assets/images/drift_anchor.png', 55);
 }
 
 run().catch(console.error);
