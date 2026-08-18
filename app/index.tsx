@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { CyberCar } from '../components/game/CyberCar';
 import { Colors } from '../constants/colors';
 import { Typography } from '../constants/typography';
 import { Spacing, Radius } from '../constants/spacing';
@@ -18,11 +19,11 @@ export default function MainMenuScreen() {
   return (
     <ScreenContainer>
       <View style={styles.container}>
-        {/* Top Bar / High Score Section */}
+        {/* Top Bar / High Score & Coin Section */}
         <View style={styles.topSection}>
           <Card variant="neon" style={styles.statsCard}>
             <View style={styles.statItem}>
-              <Ionicons name="trophy" size={20} color={Colors.warning} />
+              <Ionicons name="trophy" size={18} color={Colors.warning} />
               <View>
                 <Text style={styles.statLabel}>EN YÜKSEK SKOR</Text>
                 <Text style={styles.statValue}>{highScore}</Text>
@@ -32,30 +33,48 @@ export default function MainMenuScreen() {
             <View style={styles.divider} />
 
             <View style={styles.statItem}>
-              <Ionicons name="flash" size={20} color={Colors.primary} />
+              <Ionicons name="flash" size={18} color={Colors.primary} />
               <View>
-                <Text style={styles.statLabel}>COIN BALANSI</Text>
+                <Text style={styles.statLabel}>CYBER COIN</Text>
                 <Text style={styles.statValue}>{coins}</Text>
               </View>
             </View>
           </Card>
         </View>
 
-        {/* Hero Title Section */}
+        {/* Hero Hologram Car Showcase */}
         <View style={styles.heroSection}>
+          {/* Cyberpunk Arcade Badge */}
           <View style={styles.logoBadge}>
-            <Ionicons name="shield-checkmark" size={16} color={Colors.primary} />
-            <Text style={styles.logoBadgeText}>ARCADE PROTOCOL v1.0</Text>
+            <Ionicons name="hardware-chip" size={14} color={Colors.primary} />
+            <Text style={styles.logoBadgeText}>CYBER SLING-DRIFT v2.0</Text>
           </View>
 
+          {/* Holographic Car Platform */}
+          <View style={styles.carPlatform}>
+            {/* Pulsing Floor Grid Rings */}
+            <View style={styles.platformRingOuter} />
+            <View style={styles.platformRingInner} />
+
+            {/* Showcase Neon Cyber Car */}
+            <View style={styles.carWrapper}>
+              <CyberCar
+                position={{ x: 0, y: 0 }}
+                angle={0}
+                isNitroActive={true}
+              />
+            </View>
+          </View>
+
+          {/* Main Cyberpunk Title */}
           <Text style={styles.titleText}>DRIFTCORE</Text>
-          <Text style={styles.subtitleText}>HYPER-VELOCITY CORE NAVIGATION</Text>
+          <Text style={styles.subtitleText}>HYPER-VELOCITY NEON RACER</Text>
         </View>
 
-        {/* Action Navigation Menu */}
+        {/* Action Menu Buttons */}
         <View style={styles.menuSection}>
           <Button
-            title="OYNA"
+            title="YARIŞA BAŞLA"
             onPress={() => router.push('/game')}
             variant="primary"
             size="large"
@@ -74,11 +93,11 @@ export default function MainMenuScreen() {
             />
 
             <Button
-              title="MAĞAZA"
+              title="GARAJ & SHOP"
               onPress={() => router.push('/shop')}
               variant="secondary"
               size="medium"
-              icon={<Ionicons name="bag-handle" size={18} color={Colors.text} />}
+              icon={<Ionicons name="car-sport" size={18} color={Colors.text} />}
               style={styles.gridButton}
             />
           </View>
@@ -94,7 +113,7 @@ export default function MainMenuScreen() {
 
         {/* Footer info */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>ANDROID FIRST • EXPONENTIAL CORE ENGINE</Text>
+          <Text style={styles.footerText}>SLING-DRIFT ENGINE • 60 FPS ARCADE EXPERIENCE</Text>
         </View>
       </View>
     </ScreenContainer>
@@ -105,7 +124,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.sm,
   },
   topSection: {
     marginTop: Spacing.xs,
@@ -115,6 +134,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
     paddingVertical: Spacing.sm,
+    backgroundColor: '#090D18',
   },
   statItem: {
     flexDirection: 'row',
@@ -122,45 +142,82 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   statLabel: {
-    fontSize: Typography.sizes.xs,
+    fontSize: 9,
     fontWeight: Typography.weights.semibold,
     color: Colors.textMuted,
     letterSpacing: Typography.letterSpacing.wide,
   },
   statValue: {
-    fontSize: Typography.sizes.lg,
-    fontWeight: Typography.weights.bold,
+    fontSize: Typography.sizes.md,
+    fontWeight: Typography.weights.black,
     color: Colors.text,
   },
   divider: {
     width: 1,
-    height: 28,
+    height: 24,
     backgroundColor: Colors.border,
   },
   heroSection: {
     alignItems: 'center',
-    marginVertical: Spacing.xl,
+    marginVertical: Spacing.md,
   },
   logoBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(0, 240, 255, 0.1)',
+    backgroundColor: 'rgba(0, 240, 255, 0.12)',
     borderColor: Colors.primaryGlow,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
     borderRadius: Radius.full,
     marginBottom: Spacing.md,
   },
   logoBadgeText: {
-    fontSize: Typography.sizes.xs,
+    fontSize: 10,
     fontWeight: Typography.weights.bold,
     color: Colors.primary,
     letterSpacing: Typography.letterSpacing.wider,
   },
+  carPlatform: {
+    width: 140,
+    height: 140,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginVertical: Spacing.sm,
+  },
+  platformRingOuter: {
+    position: 'absolute',
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 240, 255, 0.25)',
+    borderStyle: 'dashed',
+  },
+  platformRingInner: {
+    position: 'absolute',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'rgba(0, 240, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+  },
+  carWrapper: {
+    width: 30,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ scale: 1.3 }],
+  },
   titleText: {
-    fontSize: 44,
+    fontSize: 42,
     fontWeight: Typography.weights.black,
     color: Colors.text,
     letterSpacing: Typography.letterSpacing.arcade,
@@ -168,33 +225,34 @@ const styles = StyleSheet.create({
     textShadowColor: Colors.primaryGlow,
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 16,
-  },
-  subtitleText: {
-    fontSize: Typography.sizes.xs,
-    fontWeight: Typography.weights.medium,
-    color: Colors.textMuted,
-    letterSpacing: Typography.letterSpacing.wider,
     marginTop: Spacing.xs,
   },
+  subtitleText: {
+    fontSize: 10,
+    fontWeight: Typography.weights.bold,
+    color: Colors.textMuted,
+    letterSpacing: 2,
+    marginTop: 2,
+  },
   menuSection: {
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
   playButton: {
     width: '100%',
   },
   secondaryGrid: {
     flexDirection: 'row',
-    gap: Spacing.md,
+    gap: Spacing.sm,
   },
   gridButton: {
     flex: 1,
   },
   footer: {
     alignItems: 'center',
-    marginTop: Spacing.md,
+    marginTop: Spacing.xs,
   },
   footerText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: Typography.weights.semibold,
     color: Colors.textDisabled,
     letterSpacing: Typography.letterSpacing.wider,
