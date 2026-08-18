@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
+  Text,
   StyleSheet,
   Pressable,
   LayoutChangeEvent,
@@ -16,6 +17,7 @@ import { Core } from '../components/game/Core';
 import { Obstacle } from '../components/game/Obstacle';
 import { Card } from '../components/ui/Card';
 import { Colors } from '../constants/colors';
+import { Typography } from '../constants/typography';
 import { Radius } from '../constants/spacing';
 import { Config } from '../constants/config';
 import { useGameStore } from '../store/useGameStore';
@@ -395,6 +397,36 @@ export default function GameScreen() {
             >
               {arenaDimensions.width > 0 && arenaDimensions.height > 0 && (
                 <>
+                  {/* Finish Zone Gate Indicator */}
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      top: arenaDimensions.height * 0.06,
+                      left: arenaDimensions.width * 0.2,
+                      width: arenaDimensions.width * 0.6,
+                      height: 22,
+                      borderWidth: 1.5,
+                      borderColor: Colors.success,
+                      borderRadius: 11,
+                      backgroundColor: 'rgba(0, 255, 102, 0.12)',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      borderStyle: 'dashed',
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: Typography.weights.bold,
+                        color: Colors.success,
+                        letterSpacing: Typography.letterSpacing.wider,
+                      }}
+                    >
+                      BİTİŞ SEKTÖRÜ (FINISH)
+                    </Text>
+                  </View>
+
                   {/* Deterministic Level Obstacles Rendering */}
                   {obstacles.map((obs, idx) => (
                     <Obstacle key={`obs-${idx}`} bounds={obs.bounds} color={obs.color} />
