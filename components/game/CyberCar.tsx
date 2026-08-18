@@ -7,12 +7,14 @@ interface CyberCarProps {
   position: Vector2D;
   angle: number; // In degrees (0 = UP)
   isHooked?: boolean;
+  isNitroActive?: boolean;
 }
 
 export const CyberCar: React.FC<CyberCarProps> = ({
   position,
   angle,
   isHooked = false,
+  isNitroActive = false,
 }) => {
   const CAR_WIDTH = 22;
   const CAR_LENGTH = 38;
@@ -51,10 +53,18 @@ export const CyberCar: React.FC<CyberCarProps> = ({
 
         {/* Dual Neon Jet Thruster Exhausts */}
         <View style={styles.thrusterContainer}>
-          <View style={[styles.thruster, isHooked && styles.thrusterOverdrive]} />
-          <View style={[styles.thruster, isHooked && styles.thrusterOverdrive]} />
+          <View style={[styles.thruster, (isHooked || isNitroActive) && styles.thrusterOverdrive]} />
+          <View style={[styles.thruster, (isHooked || isNitroActive) && styles.thrusterOverdrive]} />
         </View>
       </View>
+
+      {/* Nitro Flame Plume Jet */}
+      {isNitroActive && (
+        <View style={styles.nitroPlumeContainer}>
+          <View style={styles.nitroOuterGlow} />
+          <View style={styles.nitroInnerCore} />
+        </View>
+      )}
 
       {/* Drift Tire Spark Flares */}
       {isHooked && (
@@ -186,6 +196,37 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.warning,
     borderRadius: 2,
     shadowColor: Colors.warning,
+    shadowRadius: 6,
+    shadowOpacity: 1,
+  },
+  nitroPlumeContainer: {
+    position: 'absolute',
+    bottom: -18,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    width: 14,
+    height: 18,
+    zIndex: 90,
+  },
+  nitroOuterGlow: {
+    width: 12,
+    height: 16,
+    backgroundColor: Colors.primary,
+    borderRadius: 6,
+    opacity: 0.8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+  },
+  nitroInnerCore: {
+    position: 'absolute',
+    top: 0,
+    width: 6,
+    height: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 3,
+    shadowColor: '#FFFFFF',
     shadowRadius: 6,
     shadowOpacity: 1,
   },
