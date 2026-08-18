@@ -17,6 +17,9 @@ import { CyberCar } from '../components/game/CyberCar';
 import { DriftAnchor } from '../components/game/DriftAnchor';
 import { LaserBeam } from '../components/game/LaserBeam';
 import { SkidMarks } from '../components/game/SkidMarks';
+import { EnergyShard } from '../components/game/EnergyShard';
+import { NeonCoin } from '../components/game/NeonCoin';
+import { DriftParticleSystem, Particle } from '../components/game/DriftParticleSystem';
 import { TrackRenderer } from '../components/game/TrackRenderer';
 import { TrackProgressBar } from '../components/game/TrackProgressBar';
 import { Card } from '../components/ui/Card';
@@ -28,11 +31,16 @@ import { useGameStore } from '../store/useGameStore';
 import { useLevelStore } from '../store/useLevelStore';
 import { GameState, Vector2D } from '../types/game';
 import { CyberCarState, DriftAnchor as DriftAnchorType, SkidMark } from '../types/physics';
-import { ILevel } from '../types/level';
+import { ILevel, CollectibleData } from '../types/level';
 import { mainGameEngine } from '../game/core/GameEngine';
 import { driftPhysicsSystem } from '../game/systems/DriftPhysicsSystem';
 import { LevelRegistry } from '../game/levels/LevelRegistry';
 import { saveService } from '../services/SaveService';
+
+interface ActiveCollectible extends CollectibleData {
+  worldPos: Vector2D;
+  collected: boolean;
+}
 
 export default function GameScreen() {
   const router = useRouter();
@@ -67,6 +75,10 @@ export default function GameScreen() {
   // Camera & Render States
   const [cameraY, setCameraY] = useState<number>(0);
   const [trackProgress, setTrackProgress] = useState<number>(0);
+  const [comboMultiplier, setComboMultiplier] = useState<number>(1);
+  const [shardsCount, setShardsCount] = useState<number>(0);
+  const [coinsCount, setCoinsCount] = useState<number>(0);
+  const [isNitroActive, setIsNitroActive] = useState<boolean>(false);
 
   const [carRenderState, setCarRenderState] = useState<CyberCarState>({
     position: { x: 120, y: 2200 },
@@ -82,6 +94,8 @@ export default function GameScreen() {
   });
 
   const [anchors, setAnchors] = useState<DriftAnchorType[]>([]);
+  const [collectibles, setCollectibles] = useState<ActiveCollectible[]>([]);
+  const [particles, setParticles] = useState<Particle[]>([]);
   const [skidMarks, setSkidMarks] = useState<SkidMark[]>([]);
   const [activeHookAnchor, setActiveHookAnchor] = useState<DriftAnchorType | null>(null);
   const [perfectDriftText, setPerfectDriftText] = useState<string | null>(null);
@@ -89,10 +103,17 @@ export default function GameScreen() {
   // Mutable high-frequency refs for 60 FPS tick loop
   const carStateRef = useRef<CyberCarState>({ ...carRenderState });
   const anchorsRef = useRef<DriftAnchorType[]>([]);
+  const collectiblesRef = useRef<ActiveCollectible[]>([]);
+  const particlesRef = useRef<Particle[]>([]);
   const skidMarksRef = useRef<SkidMark[]>([]);
   const cameraYRef = useRef<number>(0);
   const isHoldingTouchRef = useRef<boolean>(false);
   const scoreAccumulatorRef = useRef<number>(0);
+  const comboMultiplierRef = useRef<number>(1);
+  const shardsCountRef = useRef<number>(0);
+  const coinsCountRef = useRef<number>(0);
+  const hookStartTimeRef = useRef<number>(0);
+  const nitroEndTimeRef = useRef<number>(0);
   const viewportWidthRef = useRef<number>(0);
   const viewportHeightRef = useRef<number>(0);
   const gameStateRef = useRef<GameState>(GameState.READY);
@@ -119,6 +140,27 @@ export default function GameScreen() {
       }
     });
   }, [setHighScore]);
+
+  // Spawn dynamic particle burst
+  const spawnParticles = (x: number, y: number, color: string, count: number = 8) => {
+    const newParticles: Particle[] = [];
+    for (let i = 0; i < count; i++) {
+      const speed = 60 + Math.random() * 120;
+      const angle = Math.random() * Math.PI * 2;
+      newParticles.push({
+        id: `${Date.now()}-${Math.random()}`,
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: 3 + Math.random() * 4,
+        color,
+        life: 1.0,
+        maxLife: 1.0,
+      });
+    }
+    particlesRef.current = [...particlesRef.current, ...newParticles];
+  };
 
   // Initialize Vertical Scrolling Track Session
   const initGameSession = useCallback(
@@ -176,18 +218,40 @@ export default function GameScreen() {
         color: anchorData.color ?? Colors.secondary,
       }));
 
+      // Calculate track collectibles in world space
+      const calculatedCollectibles: ActiveCollectible[] = (level.collectibles || []).map((c) => ({
+        ...c,
+        worldPos: {
+          x: Math.round(width * c.xRatio),
+          y: c.yWorld,
+        },
+        collected: false,
+      }));
+
       carStateRef.current = { ...initialCarState };
       anchorsRef.current = calculatedAnchors;
+      collectiblesRef.current = calculatedCollectibles;
+      particlesRef.current = [];
       skidMarksRef.current = [];
       isHoldingTouchRef.current = false;
       scoreAccumulatorRef.current = 0;
+      comboMultiplierRef.current = 1;
+      shardsCountRef.current = 0;
+      coinsCountRef.current = 0;
+      nitroEndTimeRef.current = 0;
 
       setAnchors(calculatedAnchors);
+      setCollectibles(calculatedCollectibles);
+      setParticles([]);
       setSkidMarks([]);
       setActiveHookAnchor(null);
       setCarRenderState(initialCarState);
       setCameraY(initialCameraY);
       setTrackProgress(0);
+      setComboMultiplier(1);
+      setShardsCount(0);
+      setCoinsCount(0);
+      setIsNitroActive(false);
       setScore(0);
       setIsNewHighScore(false);
       setPerfectDriftText(null);
@@ -213,6 +277,7 @@ export default function GameScreen() {
     if (!isInitializedRef.current || gameStateRef.current !== GameState.PLAYING) return;
 
     isHoldingTouchRef.current = true;
+    hookStartTimeRef.current = Date.now();
     const currentCar = carStateRef.current;
 
     const bestAnchor = driftPhysicsSystem.findBestAnchor(currentCar.position, anchorsRef.current);
@@ -235,14 +300,32 @@ export default function GameScreen() {
     const currentCar = carStateRef.current;
 
     if (currentCar.isHooked) {
+      const hookDuration = (Date.now() - hookStartTimeRef.current) / 1000;
       const releasedCar = driftPhysicsSystem.releaseHook(currentCar);
       carStateRef.current = releasedCar;
       setActiveHookAnchor(null);
-      setCarRenderState({ ...releasedCar });
 
-      // Perfect Drift feedback
-      setPerfectDriftText('PERFECT DRIFT! +60');
-      scoreAccumulatorRef.current += 60;
+      // Evaluate Perfect Drift & Combo Boost
+      if (hookDuration >= 0.25) {
+        const nextCombo = Math.min(5, comboMultiplierRef.current + 1);
+        comboMultiplierRef.current = nextCombo;
+        setComboMultiplier(nextCombo);
+
+        const bonusPoints = 50 * nextCombo;
+        scoreAccumulatorRef.current += bonusPoints;
+        setPerfectDriftText(`PERFECT DRIFT! x${nextCombo} (+${bonusPoints})`);
+
+        // Trigger Nitro Boost for 0.7s
+        nitroEndTimeRef.current = Date.now() + 700;
+        setIsNitroActive(true);
+
+        spawnParticles(currentCar.position.x, currentCar.position.y, Colors.primary, 10);
+      } else {
+        setPerfectDriftText('GOOD DRIFT! +25');
+        scoreAccumulatorRef.current += 25;
+      }
+
+      setCarRenderState({ ...releasedCar });
       setTimeout(() => setPerfectDriftText(null), 1200);
 
       try {
@@ -269,12 +352,19 @@ export default function GameScreen() {
         const bestAnchor = driftPhysicsSystem.findBestAnchor(car.position, currentAnchors);
         if (bestAnchor) {
           car = driftPhysicsSystem.attachHook(car, bestAnchor);
+          hookStartTimeRef.current = Date.now();
           setActiveHookAnchor(bestAnchor);
           try {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           } catch {}
         }
       }
+
+      // Check Nitro State
+      const nitroActive = Date.now() < nitroEndTimeRef.current;
+      setIsNitroActive(nitroActive);
+      const effectiveSpeed = nitroActive ? 300 : 240;
+      car.speed = effectiveSpeed;
 
       // 2. Physics Motion Update
       if (car.isHooked && car.activeAnchorId) {
@@ -288,6 +378,7 @@ export default function GameScreen() {
           const dist = Math.sqrt(dx * dx + dy * dy);
 
           if (dist <= anchor.radius + 12) {
+            spawnParticles(car.position.x, car.position.y, Colors.secondary, 20);
             triggerGameOver();
             return;
           }
@@ -314,48 +405,104 @@ export default function GameScreen() {
             setSkidMarks([...updatedMarks]);
           }
 
-          scoreAccumulatorRef.current += deltaTime * 50;
+          // Accumulate higher drift score with active combo multiplier
+          scoreAccumulatorRef.current += deltaTime * 60 * comboMultiplierRef.current;
         }
       } else {
         // Straight motion
         car = driftPhysicsSystem.updateStraightMotion(car, deltaTime);
-        scoreAccumulatorRef.current += deltaTime * Config.gameplay.SCORE_PER_SECOND;
+        scoreAccumulatorRef.current += deltaTime * Config.gameplay.SCORE_PER_SECOND * comboMultiplierRef.current;
       }
 
       carStateRef.current = car;
 
-      // 3. Smooth Camera Follow (Target at ~72% from top of viewport)
+      // 3. Collectibles Pickup Detection
+      const currentCollectibles = collectiblesRef.current;
+      let collectiblesUpdated = false;
+
+      for (let i = 0; i < currentCollectibles.length; i++) {
+        const item = currentCollectibles[i];
+        if (item.collected) continue;
+
+        const cdx = car.position.x - item.worldPos.x;
+        const cdy = car.position.y - item.worldPos.y;
+        const distSq = cdx * cdx + cdy * cdy;
+
+        if (distSq <= 24 * 24) {
+          item.collected = true;
+          collectiblesUpdated = true;
+
+          if (item.type === 'shard') {
+            shardsCountRef.current++;
+            setShardsCount(shardsCountRef.current);
+            scoreAccumulatorRef.current += 100 * comboMultiplierRef.current;
+            spawnParticles(item.worldPos.x, item.worldPos.y, item.color || Colors.primary, 12);
+          } else {
+            coinsCountRef.current += 10;
+            setCoinsCount(coinsCountRef.current);
+            scoreAccumulatorRef.current += 50 * comboMultiplierRef.current;
+            spawnParticles(item.worldPos.x, item.worldPos.y, Colors.warning, 10);
+          }
+
+          try {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          } catch {}
+        }
+      }
+
+      if (collectiblesUpdated) {
+        setCollectibles([...currentCollectibles]);
+      }
+
+      // 4. Update Particle Physics
+      const activeParticles = particlesRef.current;
+      if (activeParticles.length > 0) {
+        const updatedParticles: Particle[] = [];
+        for (const p of activeParticles) {
+          p.x += p.vx * deltaTime;
+          p.y += p.vy * deltaTime;
+          p.life -= deltaTime * 2.2;
+          if (p.life > 0) {
+            updatedParticles.push(p);
+          }
+        }
+        particlesRef.current = updatedParticles;
+        setParticles([...updatedParticles]);
+      }
+
+      // 5. Smooth Camera Follow (Target at ~72% from top of viewport)
       const targetCamY = car.position.y - height * 0.72;
       const clampedTargetCamY = Math.max(0, Math.min(totalLength - height, targetCamY));
       cameraYRef.current += (clampedTargetCamY - cameraYRef.current) * 0.14;
       const currentCameraY = cameraYRef.current;
       setCameraY(currentCameraY);
 
-      // 4. Track Boundary Collision Check
+      // 6. Track Boundary Collision Check
       const CAR_RADIUS = 12;
       if (
         car.position.x - CAR_RADIUS <= 6 ||
         car.position.x + CAR_RADIUS >= width - 6 ||
         car.position.y >= totalLength + 20
       ) {
+        spawnParticles(car.position.x, car.position.y, Colors.secondary, 20);
         triggerGameOver();
         return;
       }
 
-      // 5. Finish Line Reached Check
+      // 7. Finish Line Reached Check
       if (car.position.y <= finishLineYRef.current) {
         const finalScore = Math.floor(scoreAccumulatorRef.current);
         triggerLevelComplete(finalScore);
         return;
       }
 
-      // 6. Track Progress Calculation (0.0 to 1.0)
+      // 8. Track Progress Calculation (0.0 to 1.0)
       const startY = startYRef.current;
       const finishY = finishLineYRef.current;
       const currentProg = (startY - car.position.y) / (startY - finishY);
       setTrackProgress(Math.max(0, Math.min(1, currentProg)));
 
-      // 7. Update Score & Render State
+      // 9. Update Score & Render State
       const currentScoreInt = Math.floor(scoreAccumulatorRef.current);
       setScore(currentScoreInt);
       setCarRenderState({ ...car });
@@ -388,6 +535,8 @@ export default function GameScreen() {
       newBest = finalScore;
     }
 
+    const earnedCoins = (currentLevel.rewards?.coins ?? 200) + coinsCountRef.current;
+
     saveService.load().then((existing) => {
       const unlockedLevels = existing?.unlockedLevelIds || ['level_01'];
       if (!unlockedLevels.includes('level_02')) {
@@ -404,7 +553,7 @@ export default function GameScreen() {
           lastSavedAt: Date.now(),
         },
         highScore: newBest,
-        totalCoins: (existing?.totalCoins ?? 0) + (currentLevel.rewards?.coins ?? 200),
+        totalCoins: (existing?.totalCoins ?? 0) + earnedCoins,
         unlockedLevelIds: unlockedLevels,
         levelStars: starsMap,
         unlockedItemIds: existing?.unlockedItemIds ?? ['skin_default'],
@@ -450,7 +599,7 @@ export default function GameScreen() {
             lastSavedAt: Date.now(),
           },
           highScore: finalScore,
-          totalCoins: existing?.totalCoins ?? 0,
+          totalCoins: (existing?.totalCoins ?? 0) + coinsCountRef.current,
           unlockedLevelIds: existing?.unlockedLevelIds ?? ['level_01'],
           levelStars: existing?.levelStars ?? { level_01: 0 },
           unlockedItemIds: existing?.unlockedItemIds ?? ['skin_default'],
@@ -504,8 +653,14 @@ export default function GameScreen() {
   return (
     <ScreenContainer contentStyle={styles.noPadding}>
       <View style={styles.container}>
-        {/* Game HUD */}
-        <GameHUD onPausePress={handlePause} />
+        {/* Game HUD with Combo & Collectibles */}
+        <GameHUD
+          onPausePress={handlePause}
+          comboMultiplier={comboMultiplier}
+          shardsCollected={shardsCount}
+          totalShards={currentLevel.requirements?.energyShardsToCollect || 5}
+          coinsSession={coinsCount}
+        />
 
         {/* Viewport Canvas Container */}
         <View style={styles.canvasContainer}>
@@ -534,7 +689,39 @@ export default function GameScreen() {
                   }))}
                 />
 
-                {/* 3. Scrolling Corner Drift Anchors */}
+                {/* 3. Collectibles (Shards & Coins) */}
+                {collectibles.map((item) =>
+                  item.type === 'shard' ? (
+                    <EnergyShard
+                      key={item.id}
+                      position={{
+                        x: item.worldPos.x,
+                        y: item.worldPos.y - cameraY,
+                      }}
+                      color={item.color}
+                      collected={item.collected}
+                    />
+                  ) : (
+                    <NeonCoin
+                      key={item.id}
+                      position={{
+                        x: item.worldPos.x,
+                        y: item.worldPos.y - cameraY,
+                      }}
+                      collected={item.collected}
+                    />
+                  )
+                )}
+
+                {/* 4. Particle Bursts */}
+                <DriftParticleSystem
+                  particles={particles.map((p) => ({
+                    ...p,
+                    y: p.y - cameraY,
+                  }))}
+                />
+
+                {/* 5. Scrolling Corner Drift Anchors */}
                 {anchors.map((anchor) => (
                   <DriftAnchor
                     key={anchor.id}
@@ -549,7 +736,7 @@ export default function GameScreen() {
                   />
                 ))}
 
-                {/* 4. Scrolling Laser Hook Cable */}
+                {/* 6. Scrolling Laser Hook Cable */}
                 {carRenderState.isHooked && activeHookAnchor && (
                   <LaserBeam
                     from={{
@@ -564,7 +751,7 @@ export default function GameScreen() {
                   />
                 )}
 
-                {/* 5. Cyberpunk Neon Car Model */}
+                {/* 7. Cyberpunk Neon Car Model with Nitro */}
                 <CyberCar
                   position={{
                     x: carRenderState.position.x,
@@ -572,19 +759,20 @@ export default function GameScreen() {
                   }}
                   angle={carRenderState.angle}
                   isHooked={carRenderState.isHooked}
+                  isNitroActive={isNitroActive}
                 />
 
-                {/* 6. Vertical Neon Progress Bar */}
+                {/* 8. Vertical Neon Progress Bar */}
                 <TrackProgressBar progress={trackProgress} />
 
-                {/* 7. Perfect Drift Toast Feedback */}
+                {/* 9. Perfect Drift Toast Feedback */}
                 {perfectDriftText && (
                   <View pointerEvents="none" style={styles.perfectToast}>
                     <Text style={styles.perfectToastText}>{perfectDriftText}</Text>
                   </View>
                 )}
 
-                {/* 8. Full-screen Hold & Release Touch Layer */}
+                {/* 10. Full-screen Hold & Release Touch Layer */}
                 <Pressable
                   style={[StyleSheet.absoluteFillObject, { zIndex: 99999 }]}
                   onPressIn={handleTouchDown}
@@ -651,9 +839,9 @@ const styles = StyleSheet.create({
   },
   perfectToast: {
     position: 'absolute',
-    top: '22%',
+    top: '20%',
     alignSelf: 'center',
-    backgroundColor: 'rgba(255, 0, 127, 0.3)',
+    backgroundColor: 'rgba(255, 0, 127, 0.35)',
     borderColor: Colors.secondary,
     borderWidth: 1.5,
     paddingHorizontal: Spacing.lg,

@@ -20,9 +20,17 @@ export interface TrackAnchorData {
   id: string;
   name?: string;
   xRatio: number;      // 0.0 to 1.0 of viewport width
-  yWorld: number;      // Absolute world Y coordinate (from top 0 to trackLength)
+  yWorld: number;      // Absolute world Y coordinate
   radius?: number;     // default 16
   activeRange?: number;// default 160
+  color?: string;
+}
+
+export interface CollectibleData {
+  id: string;
+  type: 'shard' | 'coin';
+  xRatio: number;      // 0.0 to 1.0 of viewport width
+  yWorld: number;      // Absolute world Y coordinate
   color?: string;
 }
 
@@ -40,6 +48,7 @@ export interface ILevel {
   startPosRatio: { x: number; yWorld: number };
   startAngle?: number; // In degrees (0 = UP)
   anchors: TrackAnchorData[];
+  collectibles?: CollectibleData[];
   finishLineY: number; // e.g. 120
   completionScore?: number;
 }

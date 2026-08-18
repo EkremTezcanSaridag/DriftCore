@@ -4,7 +4,7 @@ import { Colors } from '../../constants/colors';
 export const LEVEL_01_DATA: ILevel = {
   id: 'level_01',
   name: 'Sector 01: Neon Highway',
-  description: '5 virajlı dikey neon otoyolunda kanca atarak drift ustası olun!',
+  description: '5 virajlı dikey neon otoyolunda kanca atarak drift ustası olun, kristalleri toplayın!',
   difficulty: LevelDifficulty.EASY,
   unlocked: true,
   starsEarned: 0,
@@ -13,10 +13,10 @@ export const LEVEL_01_DATA: ILevel = {
   startPosRatio: { x: 0.35, yWorld: 2250 },
   startAngle: 0,     // Heading straight UP
   finishLineY: 120,  // Finish gate at top
-  completionScore: 500,
+  completionScore: 600,
   requirements: {
-    targetScore: 500,
-    energyShardsToCollect: 0,
+    targetScore: 600,
+    energyShardsToCollect: 5,
   },
   rewards: {
     coins: 200,
@@ -72,6 +72,28 @@ export const LEVEL_01_DATA: ILevel = {
       activeRange: 160,
       color: Colors.primary,
     },
+  ],
+  collectibles: [
+    // Turn 1 Shard & Coin
+    { id: 'shard_01', type: 'shard', xRatio: 0.75, yWorld: 1800, color: Colors.primary },
+    { id: 'coin_01', type: 'coin', xRatio: 0.35, yWorld: 2050 },
+
+    // Turn 2 Shard & Coin
+    { id: 'shard_02', type: 'shard', xRatio: 0.22, yWorld: 1400, color: Colors.secondary },
+    { id: 'coin_02', type: 'coin', xRatio: 0.5, yWorld: 1650 },
+
+    // Turn 3 Shard & Coin
+    { id: 'shard_03', type: 'shard', xRatio: 0.8, yWorld: 1000, color: Colors.warning },
+    { id: 'coin_03', type: 'coin', xRatio: 0.45, yWorld: 1250 },
+
+    // Turn 4 Shard & Coin
+    { id: 'shard_04', type: 'shard', xRatio: 0.18, yWorld: 630, color: Colors.primary },
+    { id: 'coin_04', type: 'coin', xRatio: 0.6, yWorld: 850 },
+
+    // Turn 5 Shard & Final Straight Coins
+    { id: 'shard_05', type: 'shard', xRatio: 0.7, yWorld: 330, color: Colors.secondary },
+    { id: 'coin_05', type: 'coin', xRatio: 0.5, yWorld: 480 },
+    { id: 'coin_06', type: 'coin', xRatio: 0.5, yWorld: 200 },
   ],
 };
 
