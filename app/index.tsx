@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ImageBackground,
+  Image,
   TouchableOpacity,
   Animated,
   StatusBar,
@@ -11,10 +12,8 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { CyberCar } from '../components/game/CyberCar';
 import { Colors } from '../constants/colors';
-import { Typography } from '../constants/typography';
-import { Spacing, Radius } from '../constants/spacing';
+import { Radius, Spacing } from '../constants/spacing';
 import { useGameStore } from '../store/useGameStore';
 
 export default function MainMenuScreen() {
@@ -22,7 +21,7 @@ export default function MainMenuScreen() {
   const highScore = useGameStore((state) => state.highScore);
   const coins = useGameStore((state) => state.coins);
 
-  // Pulse animation for Start Button and Platform
+  // Pulse animation for Start Button and Floating Car
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
 
@@ -31,7 +30,7 @@ export default function MainMenuScreen() {
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1.05,
+          toValue: 1.04,
           duration: 900,
           useNativeDriver: true,
         }),
@@ -43,17 +42,17 @@ export default function MainMenuScreen() {
       ])
     ).start();
 
-    // Floating car animation
+    // Floating car hover animation
     Animated.loop(
       Animated.sequence([
         Animated.timing(floatAnim, {
-          toValue: -6,
-          duration: 1200,
+          toValue: -8,
+          duration: 1400,
           useNativeDriver: true,
         }),
         Animated.timing(floatAnim, {
           toValue: 0,
-          duration: 1200,
+          duration: 1400,
           useNativeDriver: true,
         }),
       ])
@@ -85,7 +84,7 @@ export default function MainMenuScreen() {
       <View style={styles.ambientOverlay}>
         {/* 1. TOP MOBILE GAME STATUS BAR */}
         <View style={styles.topGameBar}>
-          {/* Player Level & High Score Badge */}
+          {/* Player High Score Trophy Badge */}
           <View style={styles.playerBadge}>
             <View style={styles.rankIconWrapper}>
               <Ionicons name="trophy" size={16} color={Colors.warning} />
@@ -96,11 +95,15 @@ export default function MainMenuScreen() {
             </View>
           </View>
 
-          {/* Currency Pill */}
+          {/* Cyber Coin Balance Pill */}
           <View style={styles.currencyPill}>
             <Ionicons name="flash" size={15} color={Colors.warning} />
             <Text style={styles.currencyText}>{coins}</Text>
-            <TouchableOpacity activeOpacity={0.7} style={styles.plusBtn}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => handleNav('/shop')}
+              style={styles.plusBtn}
+            >
               <Ionicons name="add" size={12} color="#000" />
             </TouchableOpacity>
           </View>
@@ -108,58 +111,61 @@ export default function MainMenuScreen() {
 
         {/* 2. GAME LOGO HEADER */}
         <View style={styles.logoContainer}>
-          <Text style={styles.gameTitle}>DRIFT<Text style={styles.gameTitleAccent}>CORE</Text></Text>
+          <Text style={styles.gameTitle}>
+            DRIFT<Text style={styles.gameTitleAccent}>CORE</Text>
+          </Text>
           <View style={styles.cyberSubBadge}>
             <Text style={styles.cyberSubText}>⚡ CYBER SLING RACER ⚡</Text>
           </View>
         </View>
 
-        {/* 3. HERO SHOWCASE CAR STAGE */}
+        {/* 3. HERO 3D HYPERCAR SHOWCASE STAGE */}
         <View style={styles.stageContainer}>
-          {/* Hologram Stage Rings */}
-          <View style={styles.hologramStage}>
-            <View style={styles.stageRingOuter} />
-            <View style={styles.stageRingMid} />
-            <View style={styles.stageRingCore} />
+          <Animated.View
+            style={[
+              styles.heroCarCard,
+              { transform: [{ translateY: floatAnim }] },
+            ]}
+          >
+            {/* High-Resolution 3D Frontal Hypercar Render */}
+            <Image
+              source={require('../assets/images/hero_car_3d.png')}
+              style={styles.heroCarImage}
+              resizeMode="cover"
+            />
 
-            {/* Glowing Ground Aura */}
-            <View style={styles.groundGlow} />
+            {/* Glowing Neon Cyber Border Accent */}
+            <View style={styles.heroCardBorder} />
 
-            {/* Floating Animated Showcase CyberCar */}
-            <Animated.View
-              style={[
-                styles.carWrapper,
-                { transform: [{ translateY: floatAnim }, { scale: 1.5 }] },
-              ]}
-            >
-              <CyberCar
-                position={{ x: 0, y: 0 }}
-                angle={0}
-                isNitroActive={true}
-              />
-            </Animated.View>
-          </View>
+            {/* Car Name & Class Tag */}
+            <View style={styles.carNameTag}>
+              <Text style={styles.carNameText}>AETHER // PROTO-07</Text>
+              <View style={styles.classBadge}>
+                <Text style={styles.classBadgeText}>HYPER CLASS</Text>
+              </View>
+            </View>
+          </Animated.View>
 
-          {/* Car Tech Specs HUD */}
+          {/* Performance Stats HUD Bar */}
           <View style={styles.specsRow}>
             <View style={styles.specBadge}>
-              <Text style={styles.specLabel}>SPD</Text>
-              <Text style={styles.specValue}>320</Text>
+              <Text style={styles.specLabel}>MAX SPEED</Text>
+              <Text style={styles.specValue}>340 KM/H</Text>
             </View>
             <View style={styles.specBadge}>
-              <Text style={styles.specLabel}>DRIFT</Text>
-              <Text style={styles.specValue}>PRO</Text>
+              <Text style={styles.specLabel}>DRIFT ANGLE</Text>
+              <Text style={[styles.specValue, { color: Colors.secondary }]}>65° PRO</Text>
             </View>
             <View style={styles.specBadge}>
               <Text style={styles.specLabel}>NITRO</Text>
-              <Text style={styles.specValue}>MAX</Text>
+              <Text style={[styles.specValue, { color: Colors.warning }]}>3.2X</Text>
             </View>
           </View>
         </View>
 
-        {/* 4. BOTTOM ACTION CONSOLE & FLOATING BUTTONS */}
+        {/* 4. BOTTOM ACTION CONSOLE & BUTTONS */}
         <View style={styles.bottomConsole}>
-          {/* Main Giant Glowing Start Button */}
+          {/* Giant Glowing Start Race Button */}
           <Animated.View style={{ transform: [{ scale: pulseAnim }], width: '100%' }}>
             <TouchableOpacity
               activeOpacity={0.85}
@@ -223,8 +229,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(5, 8, 17, 0.72)',
     paddingHorizontal: 20,
-    paddingTop: 54,
-    paddingBottom: 30,
+    paddingTop: 52,
+    paddingBottom: 28,
     justifyContent: 'space-between',
   },
   topGameBar: {
@@ -236,8 +242,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
-    borderColor: 'rgba(0, 240, 255, 0.3)',
+    backgroundColor: 'rgba(15, 23, 42, 0.88)',
+    borderColor: 'rgba(0, 240, 255, 0.35)',
     borderWidth: 1.5,
     borderRadius: Radius.full,
     paddingVertical: 6,
@@ -273,8 +279,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
-    borderColor: 'rgba(255, 184, 0, 0.4)',
+    backgroundColor: 'rgba(15, 23, 42, 0.88)',
+    borderColor: 'rgba(255, 184, 0, 0.45)',
     borderWidth: 1.5,
     borderRadius: Radius.full,
     paddingVertical: 6,
@@ -296,10 +302,10 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 2,
   },
   gameTitle: {
-    fontSize: 48,
+    fontSize: 46,
     fontWeight: '900',
     color: '#FFF',
     letterSpacing: 4,
@@ -328,92 +334,99 @@ const styles = StyleSheet.create({
   stageContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 10,
+    marginVertical: 4,
   },
-  hologramStage: {
-    width: 220,
-    height: 220,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  stageRingOuter: {
-    position: 'absolute',
-    width: 210,
+  heroCarCard: {
+    width: '100%',
     height: 210,
-    borderRadius: 105,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0, 240, 255, 0.35)',
-    borderStyle: 'dashed',
-  },
-  stageRingMid: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 0, 127, 0.35)',
-  },
-  stageRingCore: {
-    position: 'absolute',
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: 'rgba(0, 240, 255, 0.1)',
-    borderWidth: 2,
-    borderColor: Colors.primary,
+    borderRadius: Radius.xl,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#0A0F1D',
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 20,
+    shadowOpacity: 0.8,
+    shadowRadius: 18,
+    elevation: 8,
   },
-  groundGlow: {
+  heroCarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  heroCardBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 2,
+    borderColor: Colors.primaryGlow,
+    borderRadius: Radius.xl,
+  },
+  carNameTag: {
     position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: Colors.primary,
-    opacity: 0.15,
-  },
-  carWrapper: {
-    width: 48,
-    height: 78,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 20,
-  },
-  specsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 14,
-  },
-  specBadge: {
+    bottom: 10,
+    left: 12,
+    right: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
-    borderColor: Colors.border,
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(7, 11, 20, 0.75)',
+    borderColor: 'rgba(0, 240, 255, 0.3)',
     borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: Radius.md,
   },
+  carNameText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#FFF',
+    letterSpacing: 1,
+  },
+  classBadge: {
+    backgroundColor: 'rgba(255, 0, 127, 0.3)',
+    borderColor: Colors.secondary,
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: Radius.sm,
+  },
+  classBadgeText: {
+    fontSize: 8,
+    fontWeight: '900',
+    color: Colors.secondary,
+    letterSpacing: 0.5,
+  },
+  specsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  specBadge: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderColor: 'rgba(0, 240, 255, 0.25)',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: Radius.md,
+    minWidth: 80,
+  },
   specLabel: {
-    fontSize: 9,
+    fontSize: 8,
     fontWeight: '800',
     color: Colors.textMuted,
+    letterSpacing: 0.5,
   },
   specValue: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '900',
     color: Colors.primary,
+    marginTop: 1,
   },
   bottomConsole: {
     gap: 16,
     alignItems: 'center',
   },
   giantPlayButton: {
-    height: 60,
+    height: 58,
     borderRadius: Radius.xl,
     backgroundColor: Colors.primary,
     flexDirection: 'row',
