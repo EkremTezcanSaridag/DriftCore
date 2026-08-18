@@ -16,7 +16,7 @@ import { LevelCompleteModal } from '../components/game/LevelCompleteModal';
 import { CyberCar } from '../components/game/CyberCar';
 import { DriftAnchor } from '../components/game/DriftAnchor';
 import { LaserBeam } from '../components/game/LaserBeam';
-import { SkidMarks } from '../components/game/SkidMarks';
+import { SkidMarks, SkidSegment } from '../components/game/SkidMarks';
 import { EnergyShard } from '../components/game/EnergyShard';
 import { NeonCoin } from '../components/game/NeonCoin';
 import { DriftParticleSystem, Particle } from '../components/game/DriftParticleSystem';
@@ -30,7 +30,7 @@ import { Config } from '../constants/config';
 import { useGameStore } from '../store/useGameStore';
 import { useLevelStore } from '../store/useLevelStore';
 import { GameState, Vector2D } from '../types/game';
-import { CyberCarState, DriftAnchor as DriftAnchorType, SkidMark } from '../types/physics';
+import { CyberCarState, DriftAnchor as DriftAnchorType } from '../types/physics';
 import { ILevel, CollectibleData } from '../types/level';
 import { mainGameEngine } from '../game/core/GameEngine';
 import { driftPhysicsSystem } from '../game/systems/DriftPhysicsSystem';
@@ -82,9 +82,9 @@ export default function GameScreen() {
 
   const [carRenderState, setCarRenderState] = useState<CyberCarState>({
     position: { x: 120, y: 2200 },
-    velocity: { x: 0, y: -240 },
+    velocity: { x: 0, y: -250 },
     angle: 0,
-    speed: 240,
+    speed: 250,
     isHooked: false,
     activeAnchorId: null,
     orbitRadius: 0,
@@ -96,7 +96,7 @@ export default function GameScreen() {
   const [anchors, setAnchors] = useState<DriftAnchorType[]>([]);
   const [collectibles, setCollectibles] = useState<ActiveCollectible[]>([]);
   const [particles, setParticles] = useState<Particle[]>([]);
-  const [skidMarks, setSkidMarks] = useState<SkidMark[]>([]);
+  const [skidSegments, setSkidSegments] = useState<SkidSegment[]>([]);
   const [activeHookAnchor, setActiveHookAnchor] = useState<DriftAnchorType | null>(null);
   const [perfectDriftText, setPerfectDriftText] = useState<string | null>(null);
 
@@ -105,7 +105,7 @@ export default function GameScreen() {
   const anchorsRef = useRef<DriftAnchorType[]>([]);
   const collectiblesRef = useRef<ActiveCollectible[]>([]);
   const particlesRef = useRef<Particle[]>([]);
-  const skidMarksRef = useRef<SkidMark[]>([]);
+  const skidSegmentsRef = useRef<SkidSegment[]>([]);
   const cameraYRef = useRef<number>(0);
   const isHoldingTouchRef = useRef<boolean>(false);
   const scoreAccumulatorRef = useRef<number>(0);
@@ -119,9 +119,9 @@ export default function GameScreen() {
   const gameStateRef = useRef<GameState>(GameState.READY);
   const currentLevelRef = useRef<ILevel>(currentLevel);
   const isInitializedRef = useRef<boolean>(false);
-  const startYRef = useRef<number>(2250);
+  const startYRef = useRef<number>(2450);
   const finishLineYRef = useRef<number>(120);
-  const totalTrackLengthRef = useRef<number>(2400);
+  const totalTrackLengthRef = useRef<number>(2600);
 
   // Sync refs
   useEffect(() => {
@@ -169,7 +169,7 @@ export default function GameScreen() {
 
       viewportWidthRef.current = width;
       viewportHeightRef.current = height;
-      totalTrackLengthRef.current = level.trackLength || 2400;
+      totalTrackLengthRef.current = level.trackLength || 2600;
       finishLineYRef.current = level.finishLineY ?? 120;
       startYRef.current = level.startPosRatio.yWorld;
 
@@ -180,7 +180,7 @@ export default function GameScreen() {
       };
 
       const startAngle = level.startAngle ?? 0;
-      const initialSpeed = 240;
+      const initialSpeed = 250;
 
       // Center initial camera on car
       const initialCameraY = Math.max(
@@ -213,8 +213,8 @@ export default function GameScreen() {
           x: Math.round(width * anchorData.xRatio),
           y: anchorData.yWorld,
         },
-        radius: anchorData.radius ?? 16,
-        activeRange: anchorData.activeRange ?? 160,
+        radius: anchorData.radius ?? 20,
+        activeRange: anchorData.activeRange ?? 180,
         color: anchorData.color ?? Colors.secondary,
       }));
 
@@ -232,7 +232,7 @@ export default function GameScreen() {
       anchorsRef.current = calculatedAnchors;
       collectiblesRef.current = calculatedCollectibles;
       particlesRef.current = [];
-      skidMarksRef.current = [];
+      skidSegmentsRef.current = [];
       isHoldingTouchRef.current = false;
       scoreAccumulatorRef.current = 0;
       comboMultiplierRef.current = 1;
@@ -243,7 +243,7 @@ export default function GameScreen() {
       setAnchors(calculatedAnchors);
       setCollectibles(calculatedCollectibles);
       setParticles([]);
-      setSkidMarks([]);
+      setSkidSegments([]);
       setActiveHookAnchor(null);
       setCarRenderState(initialCarState);
       setCameraY(initialCameraY);
@@ -288,7 +288,7 @@ export default function GameScreen() {
       setCarRenderState({ ...hookedCar });
 
       try {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       } catch {}
     }
   };
@@ -319,7 +319,7 @@ export default function GameScreen() {
         nitroEndTimeRef.current = Date.now() + 700;
         setIsNitroActive(true);
 
-        spawnParticles(currentCar.position.x, currentCar.position.y, Colors.primary, 10);
+        spawnParticles(currentCar.position.x, currentCar.position.y, Colors.primary, 12);
       } else {
         setPerfectDriftText('GOOD DRIFT! +25');
         scoreAccumulatorRef.current += 25;
@@ -329,15 +329,13 @@ export default function GameScreen() {
       setTimeout(() => setPerfectDriftText(null), 1200);
 
       try {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       } catch {}
     }
   };
 
   // 60 FPS Main Game Loop Engine Tick
   useEffect(() => {
-    let skidFrameCounter = 0;
-
     const updateTick = (deltaTime: number) => {
       if (!isInitializedRef.current || gameStateRef.current !== GameState.PLAYING) return;
 
@@ -355,7 +353,7 @@ export default function GameScreen() {
           hookStartTimeRef.current = Date.now();
           setActiveHookAnchor(bestAnchor);
           try {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
           } catch {}
         }
       }
@@ -363,7 +361,7 @@ export default function GameScreen() {
       // Check Nitro State
       const nitroActive = Date.now() < nitroEndTimeRef.current;
       setIsNitroActive(nitroActive);
-      const effectiveSpeed = nitroActive ? 300 : 240;
+      const effectiveSpeed = nitroActive ? 320 : 250;
       car.speed = effectiveSpeed;
 
       // 2. Physics Motion Update
@@ -377,41 +375,67 @@ export default function GameScreen() {
           const dy = car.position.y - anchor.position.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          if (dist <= anchor.radius + 12) {
-            spawnParticles(car.position.x, car.position.y, Colors.secondary, 20);
+          if (dist <= anchor.radius + 14) {
+            spawnParticles(car.position.x, car.position.y, Colors.secondary, 25);
             triggerGameOver();
             return;
           }
 
-          // Generate dynamic neon tire skid marks
-          skidFrameCounter++;
-          if (skidFrameCounter % 2 === 0) {
-            const rad = (car.angle * Math.PI) / 180;
-            const perpX = Math.cos(rad) * 9;
-            const perpY = Math.sin(rad) * 9;
-            const rearX = car.position.x - Math.sin(rad) * 14;
-            const rearY = car.position.y + Math.cos(rad) * 14;
+          // Generate Continuous Glowing Neon Tire Burn Ribbon Trails
+          const rad = (car.angle * Math.PI) / 180;
+          const perpX = Math.cos(rad) * 14;
+          const perpY = Math.sin(rad) * 14;
+          const rearX = car.position.x - Math.sin(rad) * 22;
+          const rearY = car.position.y + Math.cos(rad) * 22;
 
-            const newMark: SkidMark = {
-              id: `${Date.now()}-${Math.random()}`,
-              leftWheel: { x: rearX - perpX, y: rearY - perpY },
-              rightWheel: { x: rearX + perpX, y: rearY + perpY },
-              opacity: 0.9,
-            };
+          const segLength = Math.max(8, car.speed * deltaTime * 1.1);
+          const newLeftSeg: SkidSegment = {
+            id: `skid-l-${Date.now()}-${Math.random()}`,
+            x: rearX - perpX,
+            y: rearY - perpY,
+            angle: car.angle,
+            length: segLength,
+            width: 3.5,
+            color: Colors.secondary,
+            opacity: 0.85,
+          };
+          const newRightSeg: SkidSegment = {
+            id: `skid-r-${Date.now()}-${Math.random()}`,
+            x: rearX + perpX,
+            y: rearY + perpY,
+            angle: car.angle,
+            length: segLength,
+            width: 3.5,
+            color: Colors.secondary,
+            opacity: 0.85,
+          };
 
-            const updatedMarks = [...skidMarksRef.current, newMark];
-            if (updatedMarks.length > 50) updatedMarks.shift();
-            skidMarksRef.current = updatedMarks;
-            setSkidMarks([...updatedMarks]);
-          }
+          // Update & fade skid segments smoothly
+          const activeSegments = skidSegmentsRef.current
+            .map((s) => ({ ...s, opacity: s.opacity - deltaTime * 0.75 }))
+            .filter((s) => s.opacity > 0.05);
+
+          activeSegments.push(newLeftSeg, newRightSeg);
+          if (activeSegments.length > 80) activeSegments.splice(0, 2);
+          skidSegmentsRef.current = activeSegments;
+          setSkidSegments([...activeSegments]);
 
           // Accumulate higher drift score with active combo multiplier
-          scoreAccumulatorRef.current += deltaTime * 60 * comboMultiplierRef.current;
+          scoreAccumulatorRef.current += deltaTime * 65 * comboMultiplierRef.current;
         }
       } else {
         // Straight motion
         car = driftPhysicsSystem.updateStraightMotion(car, deltaTime);
         scoreAccumulatorRef.current += deltaTime * Config.gameplay.SCORE_PER_SECOND * comboMultiplierRef.current;
+
+        // Fade existing skid trails when driving straight
+        if (skidSegmentsRef.current.length > 0) {
+          const faded = skidSegmentsRef.current
+            .map((s) => ({ ...s, opacity: s.opacity - deltaTime * 0.9 }))
+            .filter((s) => s.opacity > 0.05);
+          skidSegmentsRef.current = faded;
+          setSkidSegments([...faded]);
+        }
       }
 
       carStateRef.current = car;
@@ -428,7 +452,7 @@ export default function GameScreen() {
         const cdy = car.position.y - item.worldPos.y;
         const distSq = cdx * cdx + cdy * cdy;
 
-        if (distSq <= 24 * 24) {
+        if (distSq <= 30 * 30) {
           item.collected = true;
           collectiblesUpdated = true;
 
@@ -436,7 +460,7 @@ export default function GameScreen() {
             shardsCountRef.current++;
             setShardsCount(shardsCountRef.current);
             scoreAccumulatorRef.current += 100 * comboMultiplierRef.current;
-            spawnParticles(item.worldPos.x, item.worldPos.y, item.color || Colors.primary, 12);
+            spawnParticles(item.worldPos.x, item.worldPos.y, item.color || Colors.primary, 14);
           } else {
             coinsCountRef.current += 10;
             setCoinsCount(coinsCountRef.current);
@@ -484,7 +508,7 @@ export default function GameScreen() {
         car.position.x + CAR_RADIUS >= width - 6 ||
         car.position.y >= totalLength + 20
       ) {
-        spawnParticles(car.position.x, car.position.y, Colors.secondary, 20);
+        spawnParticles(car.position.x, car.position.y, Colors.secondary, 25);
         triggerGameOver();
         return;
       }
@@ -535,7 +559,7 @@ export default function GameScreen() {
       newBest = finalScore;
     }
 
-    const earnedCoins = (currentLevel.rewards?.coins ?? 200) + coinsCountRef.current;
+    const earnedCoins = (currentLevel.rewards?.coins ?? 250) + coinsCountRef.current;
 
     saveService.load().then((existing) => {
       const unlockedLevels = existing?.unlockedLevelIds || ['level_01'];
@@ -680,12 +704,11 @@ export default function GameScreen() {
                   finishLineY={finishLineYRef.current}
                 />
 
-                {/* 2. Scrolling Tire Skid Marks */}
+                {/* 2. Scrolling Continuous Neon Tire Burn Ribbon Trails */}
                 <SkidMarks
-                  marks={skidMarks.map((m) => ({
-                    ...m,
-                    leftWheel: { x: m.leftWheel.x, y: m.leftWheel.y - cameraY },
-                    rightWheel: { x: m.rightWheel.x, y: m.rightWheel.y - cameraY },
+                  segments={skidSegments.map((s) => ({
+                    ...s,
+                    y: s.y - cameraY,
                   }))}
                 />
 
@@ -751,7 +774,7 @@ export default function GameScreen() {
                   />
                 )}
 
-                {/* 7. Cyberpunk Neon Car Model with Nitro */}
+                {/* 7. Exact Matching AETHER PROTO-07 CyberCar Model */}
                 <CyberCar
                   position={{
                     x: carRenderState.position.x,

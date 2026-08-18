@@ -74,7 +74,7 @@ async function processImage(filePath, threshold = 65) {
 }
 
 async function run() {
-  await processImage('assets/images/drift_anchor.png', 55);
+  await processImage('assets/images/cyber_car.png', 65);
 }
 
 run().catch(console.error);

@@ -1,40 +1,42 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { SkidMark } from '../../types/physics';
 import { Colors } from '../../constants/colors';
 
-interface SkidMarksProps {
-  marks: SkidMark[];
+export interface SkidSegment {
+  id: string;
+  x: number;
+  y: number;
+  angle: number;
+  length: number;
+  width: number;
+  color: string;
+  opacity: number;
 }
 
-export const SkidMarks: React.FC<SkidMarksProps> = ({ marks }) => {
+interface SkidMarksProps {
+  segments: SkidSegment[];
+}
+
+export const SkidMarks: React.FC<SkidMarksProps> = ({ segments }) => {
   return (
     <View pointerEvents="none" style={styles.container}>
-      {marks.map((mark) => (
-        <React.Fragment key={mark.id}>
-          {/* Left Wheel Skid Mark */}
-          <View
-            style={[
-              styles.skidDot,
-              {
-                left: mark.leftWheel.x - 2,
-                top: mark.leftWheel.y - 2,
-                opacity: mark.opacity,
-              },
-            ]}
-          />
-          {/* Right Wheel Skid Mark */}
-          <View
-            style={[
-              styles.skidDot,
-              {
-                left: mark.rightWheel.x - 2,
-                top: mark.rightWheel.y - 2,
-                opacity: mark.opacity,
-              },
-            ]}
-          />
-        </React.Fragment>
+      {segments.map((seg) => (
+        <View
+          key={seg.id}
+          style={[
+            styles.skidStrip,
+            {
+              left: seg.x - seg.width / 2,
+              top: seg.y - seg.length / 2,
+              width: seg.width,
+              height: seg.length,
+              opacity: seg.opacity,
+              backgroundColor: seg.color,
+              shadowColor: seg.color,
+              transform: [{ rotate: `${seg.angle}deg` }],
+            },
+          ]}
+        />
       ))}
     </View>
   );
@@ -43,17 +45,14 @@ export const SkidMarks: React.FC<SkidMarksProps> = ({ marks }) => {
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 20,
+    zIndex: 25,
   },
-  skidDot: {
+  skidStrip: {
     position: 'absolute',
-    width: 4,
-    height: 4,
     borderRadius: 2,
-    backgroundColor: Colors.secondary,
-    shadowColor: Colors.secondary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
+    shadowOpacity: 0.85,
+    shadowRadius: 6,
+    elevation: 2,
   },
 });
