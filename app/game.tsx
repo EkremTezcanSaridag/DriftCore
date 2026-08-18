@@ -5,12 +5,13 @@ import {
   Pressable,
   LayoutChangeEvent,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { GameHUD } from '../components/game/GameHUD';
 import { PauseModal } from '../components/game/PauseModal';
 import { GameOverModal } from '../components/game/GameOverModal';
+import { LevelCompleteModal } from '../components/game/LevelCompleteModal';
 import { Core } from '../components/game/Core';
 import { Obstacle } from '../components/game/Obstacle';
 import { Card } from '../components/ui/Card';
@@ -18,9 +19,12 @@ import { Colors } from '../constants/colors';
 import { Radius } from '../constants/spacing';
 import { Config } from '../constants/config';
 import { useGameStore } from '../store/useGameStore';
+import { useLevelStore } from '../store/useLevelStore';
 import { GameState, Vector2D, BoundingBox } from '../types/game';
+import { ILevel } from '../types/level';
 import { mainGameEngine } from '../game/core/GameEngine';
 import { collisionSystem } from '../game/systems/CollisionSystem';
+import { LevelRegistry } from '../game/levels/LevelRegistry';
 import { saveService } from '../services/SaveService';
 
 // Heading directions in 90 degree clockwise rotation order: UP -> RIGHT -> DOWN -> LEFT
@@ -33,6 +37,12 @@ const DIRECTIONS: Vector2D[] = [
 
 export default function GameScreen() {
   const router = useRouter();
+  const searchParams = useLocalSearchParams<{ levelId?: string }>();
+
+  // Determine active level ID
+  const storeActiveLevelId = useGameStore((state) => state.activeLevelId);
+  const activeLevelId = searchParams.levelId || storeActiveLevelId || 'level_01';
+  const currentLevel = LevelRegistry.getLevelById(activeLevelId);
 
   // Arena dimensions measured on layout
   const [arenaDimensions, setArenaDimensions] = useState<{
@@ -40,7 +50,7 @@ export default function GameScreen() {
     height: number;
   }>({ width: 0, height: 0 });
 
-  // Game state from Zustand store
+  // Game state from Zustand stores
   const {
     gameState,
     score,
@@ -50,15 +60,17 @@ export default function GameScreen() {
     setHighScore,
   } = useGameStore();
 
+  const { unlockLevel, updateLevelStars } = useLevelStore();
+
   // New High Score Flag for current session
   const [isNewHighScore, setIsNewHighScore] = useState(false);
 
-  // Core Render Position State (synced from ref per frame for smooth 60 FPS)
+  // Core Render Position State
   const [coreRenderPos, setCoreRenderPos] = useState<Vector2D>({ x: 0, y: 0 });
   const [coreTrail, setCoreTrail] = useState<Vector2D[]>([]);
 
   // Static Obstacles list
-  const [obstacles, setObstacles] = useState<BoundingBox[]>([]);
+  const [obstacles, setObstacles] = useState<{ bounds: BoundingBox; color?: string }[]>([]);
 
   // Mutable refs for high-frequency game engine tick updates
   const corePosRef = useRef<Vector2D>({ x: 0, y: 0 });
@@ -69,11 +81,16 @@ export default function GameScreen() {
   const arenaWidthRef = useRef<number>(0);
   const arenaHeightRef = useRef<number>(0);
   const gameStateRef = useRef<GameState>(GameState.READY);
+  const currentLevelRef = useRef<ILevel>(currentLevel);
 
-  // Sync gameState ref
+  // Sync refs
   useEffect(() => {
     gameStateRef.current = gameState;
   }, [gameState]);
+
+  useEffect(() => {
+    currentLevelRef.current = currentLevel;
+  }, [currentLevel]);
 
   // Load High Score on initial mount
   useEffect(() => {
@@ -86,44 +103,39 @@ export default function GameScreen() {
 
   // Initialize Obstacles once Arena dimensions are measured
   const initGameSession = useCallback(
-    (width: number, height: number) => {
+    (width: number, height: number, level: ILevel) => {
       if (width <= 0 || height <= 0) return;
 
       arenaWidthRef.current = width;
       arenaHeightRef.current = height;
 
-      // Start Core at exact center of Arena
-      const centerPos = { x: width / 2, y: height / 2 };
-      corePosRef.current = { ...centerPos };
-      dirIndexRef.current = 0; // Initial Direction: UP
+      // Start Core at level initial position ratio
+      const startRatio = level.startPosRatio || { x: 0.5, y: 0.82 };
+      const startPos = {
+        x: Math.round(width * startRatio.x),
+        y: Math.round(height * startRatio.y),
+      };
+
+      corePosRef.current = { ...startPos };
+      dirIndexRef.current = level.startDirectionIndex ?? 0; // Default UP
       scoreAccumulatorRef.current = 0;
       trailRef.current = [];
 
-      // Calculate 3 static geometric obstacles responsive to arena size
-      const obsList: BoundingBox[] = [
-        {
-          x: Math.round(width * 0.18),
-          y: Math.round(height * 0.22),
-          width: Math.max(60, Math.round(width * 0.25)),
-          height: Math.max(35, Math.round(height * 0.08)),
+      // Calculate deterministic static obstacles from level data
+      const relObstacles = level.obstacles || [];
+      const calculatedObstacles = relObstacles.map((rel) => ({
+        bounds: {
+          x: Math.round(width * rel.xRatio),
+          y: Math.round(height * rel.yRatio),
+          width: Math.max(20, Math.round(width * rel.widthRatio)),
+          height: Math.max(20, Math.round(height * rel.heightRatio)),
         },
-        {
-          x: Math.round(width * 0.62),
-          y: Math.round(height * 0.42),
-          width: Math.max(45, Math.round(width * 0.2)),
-          height: Math.max(70, Math.round(height * 0.16)),
-        },
-        {
-          x: Math.round(width * 0.25),
-          y: Math.round(height * 0.7),
-          width: Math.max(80, Math.round(width * 0.35)),
-          height: Math.max(35, Math.round(height * 0.07)),
-        },
-      ];
+        color: rel.color,
+      }));
 
-      obstaclesRef.current = obsList;
-      setObstacles(obsList);
-      setCoreRenderPos(centerPos);
+      obstaclesRef.current = calculatedObstacles.map((o) => o.bounds);
+      setObstacles(calculatedObstacles);
+      setCoreRenderPos(startPos);
       setCoreTrail([]);
       setScore(0);
       setIsNewHighScore(false);
@@ -137,7 +149,7 @@ export default function GameScreen() {
     const { width, height } = event.nativeEvent.layout;
     if (width > 0 && height > 0) {
       setArenaDimensions({ width, height });
-      initGameSession(width, height);
+      initGameSession(width, height, currentLevel);
     }
   };
 
@@ -149,7 +161,7 @@ export default function GameScreen() {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {
-      // Haptics unavailable on non-mobile platforms
+      // Haptics fallback
     }
 
     // Turn 90 degrees clockwise (UP -> RIGHT -> DOWN -> LEFT -> UP)
@@ -211,7 +223,14 @@ export default function GameScreen() {
       const currentScoreInt = Math.floor(scoreAccumulatorRef.current);
       setScore(currentScoreInt);
 
-      // 4. Update React Render State for Smooth Graphics
+      // 4. Level Completion Condition Check
+      const targetScore = currentLevelRef.current.completionScore ?? 200;
+      if (currentScoreInt >= targetScore) {
+        triggerLevelComplete(currentScoreInt);
+        return;
+      }
+
+      // 5. Update React Render State for Smooth Graphics
       setCoreRenderPos({ ...newPos });
       setCoreTrail([...newTrail]);
     };
@@ -225,6 +244,68 @@ export default function GameScreen() {
     };
   }, [setScore]);
 
+  // Trigger Level Complete
+  const triggerLevelComplete = (finalScore: number) => {
+    mainGameEngine.stop();
+    setGameState(GameState.LEVEL_COMPLETE);
+
+    // Unlock Level 2 & award 3 stars for Level 1
+    unlockLevel('level_02');
+    updateLevelStars(activeLevelId, 3);
+
+    const currentBest = useGameStore.getState().highScore;
+    let newBest = currentBest;
+
+    if (finalScore > currentBest) {
+      setIsNewHighScore(true);
+      setHighScore(finalScore);
+      newBest = finalScore;
+    }
+
+    // Persist completion state to SaveService
+    saveService.load().then((existing) => {
+      const unlockedLevels = existing?.unlockedLevelIds || ['level_01'];
+      if (!unlockedLevels.includes('level_02')) {
+        unlockedLevels.push('level_02');
+      }
+
+      const starsMap = existing?.levelStars || {};
+      starsMap[activeLevelId] = 3;
+
+      saveService.save({
+        metadata: {
+          version: Config.version,
+          createdAt: existing?.metadata?.createdAt ?? Date.now(),
+          lastSavedAt: Date.now(),
+        },
+        highScore: newBest,
+        totalCoins: (existing?.totalCoins ?? 0) + (currentLevel.rewards?.coins ?? 100),
+        unlockedLevelIds: unlockedLevels,
+        levelStars: starsMap,
+        unlockedItemIds: existing?.unlockedItemIds ?? ['skin_default'],
+        equippedSkinId: existing?.equippedSkinId ?? 'skin_default',
+        equippedTrailId: existing?.equippedTrailId ?? 'trail_default',
+        settings: existing?.settings ?? {
+          sound: {
+            musicEnabled: true,
+            sfxEnabled: true,
+            musicVolume: 1.0,
+            sfxVolume: 1.0,
+          },
+          hapticsEnabled: true,
+          graphicsQuality: 'HIGH',
+          language: 'tr',
+        },
+      });
+    });
+
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      // Haptics fallback
+    }
+  };
+
   // Trigger Game Over
   const triggerGameOver = () => {
     mainGameEngine.stop();
@@ -237,7 +318,6 @@ export default function GameScreen() {
       setIsNewHighScore(true);
       setHighScore(finalScore);
 
-      // Persist to Storage
       saveService.load().then((existing) => {
         saveService.save({
           metadata: {
@@ -286,7 +366,7 @@ export default function GameScreen() {
   };
 
   const handleRestart = () => {
-    initGameSession(arenaWidthRef.current, arenaHeightRef.current);
+    initGameSession(arenaWidthRef.current, arenaHeightRef.current, currentLevel);
     mainGameEngine.start();
   };
 
@@ -315,9 +395,9 @@ export default function GameScreen() {
             >
               {arenaDimensions.width > 0 && arenaDimensions.height > 0 && (
                 <>
-                  {/* Obstacles Rendering */}
+                  {/* Deterministic Level Obstacles Rendering */}
                   {obstacles.map((obs, idx) => (
-                    <Obstacle key={`obs-${idx}`} bounds={obs} />
+                    <Obstacle key={`obs-${idx}`} bounds={obs.bounds} color={obs.color} />
                   ))}
 
                   {/* Core Player Rendering */}
@@ -346,6 +426,16 @@ export default function GameScreen() {
           score={score}
           highScore={highScore}
           isNewHighScore={isNewHighScore}
+          onRestart={handleRestart}
+          onMainMenu={handleMainMenu}
+        />
+
+        {/* Level Complete Modal Overlay */}
+        <LevelCompleteModal
+          visible={gameState === GameState.LEVEL_COMPLETE}
+          levelName={currentLevel.name}
+          score={score}
+          highScore={highScore}
           onRestart={handleRestart}
           onMainMenu={handleMainMenu}
         />
