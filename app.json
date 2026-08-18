@@ -28,6 +28,13 @@
     },
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "51621d03-1639-46be-b4fa-2db5c0980b13"
+      }
+    },
+    "owner": "ekoteko12"
   }
 }
