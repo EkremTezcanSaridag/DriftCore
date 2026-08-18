@@ -1,10 +1,16 @@
-import React from 'react';
-import { View, Text, StyleSheet, ImageBackground } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ImageBackground,
+  TouchableOpacity,
+  Animated,
+  StatusBar,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { ScreenContainer } from '../components/ui/ScreenContainer';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
+import * as Haptics from 'expo-haptics';
 import { CyberCar } from '../components/game/CyberCar';
 import { Colors } from '../constants/colors';
 import { Typography } from '../constants/typography';
@@ -16,114 +22,192 @@ export default function MainMenuScreen() {
   const highScore = useGameStore((state) => state.highScore);
   const coins = useGameStore((state) => state.coins);
 
+  // Pulse animation for Start Button and Platform
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Pulse animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.05,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Floating car animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: -6,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [pulseAnim, floatAnim]);
+
+  const handleStartRace = () => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    } catch {}
+    router.push('/game');
+  };
+
+  const handleNav = (route: string) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch {}
+    router.push(route as any);
+  };
+
   return (
     <ImageBackground
       source={require('../assets/images/menu_bg.png')}
       style={styles.bgImage}
       resizeMode="cover"
     >
-      {/* Dark Cyberpunk Vignette Gradient Overlay */}
-      <View style={styles.darkOverlay}>
-        <ScreenContainer contentStyle={styles.noPadding}>
-          <View style={styles.container}>
-            {/* Top Bar / High Score & Coin Section */}
-            <View style={styles.topSection}>
-              <Card variant="neon" style={styles.statsCard}>
-                <View style={styles.statItem}>
-                  <Ionicons name="trophy" size={18} color={Colors.warning} />
-                  <View>
-                    <Text style={styles.statLabel}>EN YÜKSEK SKOR</Text>
-                    <Text style={styles.statValue}>{highScore}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.statItem}>
-                  <Ionicons name="flash" size={18} color={Colors.primary} />
-                  <View>
-                    <Text style={styles.statLabel}>CYBER COIN</Text>
-                    <Text style={styles.statValue}>{coins}</Text>
-                  </View>
-                </View>
-              </Card>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      {/* Dark Vignette Ambient Overlay */}
+      <View style={styles.ambientOverlay}>
+        {/* 1. TOP MOBILE GAME STATUS BAR */}
+        <View style={styles.topGameBar}>
+          {/* Player Level & High Score Badge */}
+          <View style={styles.playerBadge}>
+            <View style={styles.rankIconWrapper}>
+              <Ionicons name="trophy" size={16} color={Colors.warning} />
             </View>
-
-            {/* Hero Hologram Car Showcase */}
-            <View style={styles.heroSection}>
-              {/* Cyberpunk Arcade Badge */}
-              <View style={styles.logoBadge}>
-                <Ionicons name="hardware-chip" size={14} color={Colors.primary} />
-                <Text style={styles.logoBadgeText}>CYBER SLING-DRIFT v2.0</Text>
-              </View>
-
-              {/* Holographic Car Platform */}
-              <View style={styles.carPlatform}>
-                {/* Pulsing Floor Grid Rings */}
-                <View style={styles.platformRingOuter} />
-                <View style={styles.platformRingInner} />
-
-                {/* Showcase High-Res Cyber Car Sprite */}
-                <View style={styles.carWrapper}>
-                  <CyberCar
-                    position={{ x: 0, y: 0 }}
-                    angle={0}
-                    isNitroActive={true}
-                  />
-                </View>
-              </View>
-
-              {/* Main Cyberpunk Title */}
-              <Text style={styles.titleText}>DRIFTCORE</Text>
-              <Text style={styles.subtitleText}>HYPER-VELOCITY NEON RACER</Text>
-            </View>
-
-            {/* Action Menu Buttons */}
-            <View style={styles.menuSection}>
-              <Button
-                title="YARIŞA BAŞLA"
-                onPress={() => router.push('/game')}
-                variant="primary"
-                size="large"
-                icon={<Ionicons name="play" size={22} color={Colors.background} />}
-                style={styles.playButton}
-              />
-
-              <View style={styles.secondaryGrid}>
-                <Button
-                  title="BÖLÜMLER"
-                  onPress={() => router.push('/levels')}
-                  variant="outline"
-                  size="medium"
-                  icon={<Ionicons name="grid" size={18} color={Colors.primary} />}
-                  style={styles.gridButton}
-                />
-
-                <Button
-                  title="GARAJ & SHOP"
-                  onPress={() => router.push('/shop')}
-                  variant="secondary"
-                  size="medium"
-                  icon={<Ionicons name="car-sport" size={18} color={Colors.text} />}
-                  style={styles.gridButton}
-                />
-              </View>
-
-              <Button
-                title="AYARLAR"
-                onPress={() => router.push('/settings')}
-                variant="ghost"
-                size="medium"
-                icon={<Ionicons name="settings-sharp" size={18} color={Colors.textSecondary} />}
-              />
-            </View>
-
-            {/* Footer info */}
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>SLING-DRIFT ENGINE • 60 FPS ARCADE EXPERIENCE</Text>
+            <View>
+              <Text style={styles.rankLabel}>BEST SCORE</Text>
+              <Text style={styles.rankValue}>{highScore}</Text>
             </View>
           </View>
-        </ScreenContainer>
+
+          {/* Currency Pill */}
+          <View style={styles.currencyPill}>
+            <Ionicons name="flash" size={15} color={Colors.warning} />
+            <Text style={styles.currencyText}>{coins}</Text>
+            <TouchableOpacity activeOpacity={0.7} style={styles.plusBtn}>
+              <Ionicons name="add" size={12} color="#000" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 2. GAME LOGO HEADER */}
+        <View style={styles.logoContainer}>
+          <Text style={styles.gameTitle}>DRIFT<Text style={styles.gameTitleAccent}>CORE</Text></Text>
+          <View style={styles.cyberSubBadge}>
+            <Text style={styles.cyberSubText}>⚡ CYBER SLING RACER ⚡</Text>
+          </View>
+        </View>
+
+        {/* 3. HERO SHOWCASE CAR STAGE */}
+        <View style={styles.stageContainer}>
+          {/* Hologram Stage Rings */}
+          <View style={styles.hologramStage}>
+            <View style={styles.stageRingOuter} />
+            <View style={styles.stageRingMid} />
+            <View style={styles.stageRingCore} />
+
+            {/* Glowing Ground Aura */}
+            <View style={styles.groundGlow} />
+
+            {/* Floating Animated Showcase CyberCar */}
+            <Animated.View
+              style={[
+                styles.carWrapper,
+                { transform: [{ translateY: floatAnim }, { scale: 1.5 }] },
+              ]}
+            >
+              <CyberCar
+                position={{ x: 0, y: 0 }}
+                angle={0}
+                isNitroActive={true}
+              />
+            </Animated.View>
+          </View>
+
+          {/* Car Tech Specs HUD */}
+          <View style={styles.specsRow}>
+            <View style={styles.specBadge}>
+              <Text style={styles.specLabel}>SPD</Text>
+              <Text style={styles.specValue}>320</Text>
+            </View>
+            <View style={styles.specBadge}>
+              <Text style={styles.specLabel}>DRIFT</Text>
+              <Text style={styles.specValue}>PRO</Text>
+            </View>
+            <View style={styles.specBadge}>
+              <Text style={styles.specLabel}>NITRO</Text>
+              <Text style={styles.specValue}>MAX</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* 4. BOTTOM ACTION CONSOLE & FLOATING BUTTONS */}
+        <View style={styles.bottomConsole}>
+          {/* Main Giant Glowing Start Button */}
+          <Animated.View style={{ transform: [{ scale: pulseAnim }], width: '100%' }}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleStartRace}
+              style={styles.giantPlayButton}
+            >
+              <View style={styles.playGlowBackdrop} />
+              <Ionicons name="play" size={28} color="#050811" />
+              <Text style={styles.giantPlayText}>YARIŞA BAŞLA</Text>
+            </TouchableOpacity>
+          </Animated.View>
+
+          {/* Floating Mobile Arcade Action Buttons */}
+          <View style={styles.actionGrid}>
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={() => handleNav('/levels')}
+              style={styles.arcadeBtn}
+            >
+              <View style={styles.arcadeBtnIconCircle}>
+                <Ionicons name="grid" size={20} color={Colors.primary} />
+              </View>
+              <Text style={styles.arcadeBtnText}>BÖLÜMLER</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={() => handleNav('/shop')}
+              style={styles.arcadeBtn}
+            >
+              <View style={[styles.arcadeBtnIconCircle, styles.garageCircle]}>
+                <Ionicons name="car-sport" size={20} color={Colors.secondary} />
+              </View>
+              <Text style={styles.arcadeBtnText}>GARAJ</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={() => handleNav('/settings')}
+              style={styles.arcadeBtn}
+            >
+              <View style={styles.arcadeBtnIconCircle}>
+                <Ionicons name="settings" size={20} color={Colors.textSecondary} />
+              </View>
+              <Text style={styles.arcadeBtnText}>AYARLAR</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
     </ImageBackground>
   );
@@ -135,150 +219,256 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  darkOverlay: {
+  ambientOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(7, 11, 20, 0.78)',
-  },
-  noPadding: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  container: {
-    flex: 1,
+    backgroundColor: 'rgba(5, 8, 17, 0.72)',
+    paddingHorizontal: 20,
+    paddingTop: 54,
+    paddingBottom: 30,
     justifyContent: 'space-between',
-    paddingVertical: Spacing.xs,
   },
-  topSection: {
-    marginTop: Spacing.xs,
-  },
-  statsCard: {
+  topGameBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingVertical: Spacing.sm,
-    backgroundColor: 'rgba(9, 13, 24, 0.85)',
-    borderColor: Colors.primaryGlow,
+    justifyContent: 'space-between',
+  },
+  playerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderColor: 'rgba(0, 240, 255, 0.3)',
     borderWidth: 1.5,
+    borderRadius: Radius.full,
+    paddingVertical: 6,
+    paddingLeft: 6,
+    paddingRight: 16,
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
   },
-  statItem: {
-    flexDirection: 'row',
+  rankIconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 184, 0, 0.2)',
+    borderColor: Colors.warning,
+    borderWidth: 1,
     alignItems: 'center',
-    gap: Spacing.sm,
+    justifyContent: 'center',
   },
-  statLabel: {
-    fontSize: 9,
-    fontWeight: Typography.weights.semibold,
+  rankLabel: {
+    fontSize: 8,
+    fontWeight: '800',
     color: Colors.textMuted,
-    letterSpacing: Typography.letterSpacing.wide,
+    letterSpacing: 1,
   },
-  statValue: {
-    fontSize: Typography.sizes.md,
-    fontWeight: Typography.weights.black,
-    color: Colors.text,
+  rankValue: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#FFF',
+    letterSpacing: 0.5,
   },
-  divider: {
-    width: 1,
-    height: 24,
-    backgroundColor: Colors.border,
-  },
-  heroSection: {
-    alignItems: 'center',
-    marginVertical: Spacing.sm,
-  },
-  logoBadge: {
+  currencyPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderColor: 'rgba(255, 184, 0, 0.4)',
+    borderWidth: 1.5,
+    borderRadius: Radius.full,
+    paddingVertical: 6,
+    paddingLeft: 12,
+    paddingRight: 6,
+  },
+  currencyText: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: Colors.warning,
+  },
+  plusBtn: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: Colors.warning,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  gameTitle: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#FFF',
+    letterSpacing: 4,
+    textShadowColor: Colors.primaryGlow,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 24,
+  },
+  gameTitleAccent: {
+    color: Colors.primary,
+  },
+  cyberSubBadge: {
     backgroundColor: 'rgba(0, 240, 255, 0.15)',
     borderColor: Colors.primary,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 3,
     borderRadius: Radius.full,
-    marginBottom: Spacing.sm,
+    marginTop: 2,
   },
-  logoBadgeText: {
-    fontSize: 10,
-    fontWeight: Typography.weights.bold,
+  cyberSubText: {
+    fontSize: 9,
+    fontWeight: '900',
     color: Colors.primary,
-    letterSpacing: Typography.letterSpacing.wider,
+    letterSpacing: 2,
   },
-  carPlatform: {
-    width: 160,
-    height: 160,
+  stageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 10,
+  },
+  hologramStage: {
+    width: 220,
+    height: 220,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    marginVertical: Spacing.xs,
   },
-  platformRingOuter: {
+  stageRingOuter: {
     position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+    width: 210,
+    height: 210,
+    borderRadius: 105,
     borderWidth: 1.5,
     borderColor: 'rgba(0, 240, 255, 0.35)',
     borderStyle: 'dashed',
   },
-  platformRingInner: {
+  stageRingMid: {
     position: 'absolute',
-    width: 105,
-    height: 105,
-    borderRadius: 52.5,
-    backgroundColor: 'rgba(0, 240, 255, 0.08)',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
     borderWidth: 1.5,
+    borderColor: 'rgba(255, 0, 127, 0.35)',
+  },
+  stageRingCore: {
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: 'rgba(0, 240, 255, 0.1)',
+    borderWidth: 2,
     borderColor: Colors.primary,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.9,
-    shadowRadius: 18,
+    shadowRadius: 20,
+  },
+  groundGlow: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: Colors.primary,
+    opacity: 0.15,
   },
   carWrapper: {
-    width: 40,
-    height: 60,
+    width: 48,
+    height: 78,
     alignItems: 'center',
     justifyContent: 'center',
-    transform: [{ scale: 1.25 }],
+    zIndex: 20,
   },
-  titleText: {
-    fontSize: 44,
-    fontWeight: Typography.weights.black,
-    color: Colors.text,
-    letterSpacing: Typography.letterSpacing.arcade,
-    textAlign: 'center',
-    textShadowColor: Colors.primaryGlow,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
-    marginTop: Spacing.xs,
-  },
-  subtitleText: {
-    fontSize: 10,
-    fontWeight: Typography.weights.bold,
-    color: Colors.textMuted,
-    letterSpacing: 2,
-    marginTop: 2,
-  },
-  menuSection: {
-    gap: Spacing.sm,
-  },
-  playButton: {
-    width: '100%',
-  },
-  secondaryGrid: {
+  specsRow: {
     flexDirection: 'row',
-    gap: Spacing.sm,
+    gap: 12,
+    marginTop: 14,
   },
-  gridButton: {
-    flex: 1,
-  },
-  footer: {
+  specBadge: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: Spacing.xs,
+    gap: 5,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    borderColor: Colors.border,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.md,
   },
-  footerText: {
+  specLabel: {
     fontSize: 9,
-    fontWeight: Typography.weights.semibold,
-    color: Colors.textDisabled,
-    letterSpacing: Typography.letterSpacing.wider,
+    fontWeight: '800',
+    color: Colors.textMuted,
+  },
+  specValue: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: Colors.primary,
+  },
+  bottomConsole: {
+    gap: 16,
+    alignItems: 'center',
+  },
+  giantPlayButton: {
+    height: 60,
+    borderRadius: Radius.xl,
+    backgroundColor: Colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  playGlowBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: Radius.xl,
+    backgroundColor: '#FFF',
+    opacity: 0.15,
+  },
+  giantPlayText: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#050811',
+    letterSpacing: 2,
+  },
+  actionGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    paddingHorizontal: 10,
+  },
+  arcadeBtn: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  arcadeBtnIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    borderColor: 'rgba(0, 240, 255, 0.3)',
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: Colors.primary,
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+  },
+  garageCircle: {
+    borderColor: 'rgba(255, 0, 127, 0.4)',
+    shadowColor: Colors.secondary,
+  },
+  arcadeBtnText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: Colors.text,
+    letterSpacing: 1,
   },
 });

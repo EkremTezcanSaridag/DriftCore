@@ -9,8 +9,8 @@ export const LEVEL_01_DATA: ILevel = {
   unlocked: true,
   starsEarned: 0,
   highScore: 0,
-  trackLength: 2400, // 2400px long scrolling highway
-  startPosRatio: { x: 0.35, yWorld: 2250 },
+  trackLength: 2600, // 2600px long scrolling highway
+  startPosRatio: { x: 0.35, yWorld: 2450 },
   startAngle: 0,     // Heading straight UP
   finishLineY: 120,  // Finish gate at top
   completionScore: 600,
@@ -19,81 +19,81 @@ export const LEVEL_01_DATA: ILevel = {
     energyShardsToCollect: 5,
   },
   rewards: {
-    coins: 200,
+    coins: 250,
   },
   anchors: [
-    // 1. Viraj: Sağ Açılı Drift (Turn 1 Right)
+    // 1. Viraj: Geniş Sağ Viraj (Turn 1 Wide Right)
     {
       id: 'anchor_01',
       name: 'Apex 1 (Sağ Viraj)',
       xRatio: 0.65,
-      yWorld: 1850,
-      radius: 16,
-      activeRange: 160,
+      yWorld: 2000,
+      radius: 20,
+      activeRange: 180,
       color: Colors.secondary,
     },
-    // 2. Viraj: Sol Açılı Drift (Turn 2 Left)
+    // 2. Viraj: Geniş Sol Viraj (Turn 2 Wide Left)
     {
       id: 'anchor_02',
       name: 'Apex 2 (Sol Viraj)',
       xRatio: 0.35,
-      yWorld: 1450,
-      radius: 16,
-      activeRange: 160,
+      yWorld: 1550,
+      radius: 20,
+      activeRange: 180,
       color: Colors.primary,
     },
     // 3. Viraj: Keskin Sağ Viraj (Turn 3 Sharp Right)
     {
       id: 'anchor_03',
       name: 'Apex 3 (Keskin Sağ)',
-      xRatio: 0.7,
-      yWorld: 1050,
-      radius: 16,
-      activeRange: 160,
+      xRatio: 0.68,
+      yWorld: 1100,
+      radius: 20,
+      activeRange: 180,
       color: Colors.warning,
     },
     // 4. Viraj: Hızlı Sol Viraj (Turn 4 Fast Left)
     {
       id: 'anchor_04',
       name: 'Apex 4 (Hızlı Sol)',
-      xRatio: 0.3,
-      yWorld: 680,
-      radius: 16,
-      activeRange: 160,
+      xRatio: 0.32,
+      yWorld: 700,
+      radius: 20,
+      activeRange: 180,
       color: Colors.secondary,
     },
-    // 5. Viraj: Bitiş Girişi Sağ Viraj (Turn 5 Final Straight Entry)
+    // 5. Viraj: Final Düzlük Girişi (Turn 5 Final Straight Entry)
     {
       id: 'anchor_05',
       name: 'Apex 5 (Final Viraj)',
-      xRatio: 0.55,
+      xRatio: 0.58,
       yWorld: 380,
-      radius: 16,
-      activeRange: 160,
+      radius: 20,
+      activeRange: 180,
       color: Colors.primary,
     },
   ],
   collectibles: [
     // Turn 1 Shard & Coin
-    { id: 'shard_01', type: 'shard', xRatio: 0.75, yWorld: 1800, color: Colors.primary },
-    { id: 'coin_01', type: 'coin', xRatio: 0.35, yWorld: 2050 },
+    { id: 'shard_01', type: 'shard', xRatio: 0.78, yWorld: 1950, color: Colors.primary },
+    { id: 'coin_01', type: 'coin', xRatio: 0.35, yWorld: 2200 },
 
     // Turn 2 Shard & Coin
-    { id: 'shard_02', type: 'shard', xRatio: 0.22, yWorld: 1400, color: Colors.secondary },
-    { id: 'coin_02', type: 'coin', xRatio: 0.5, yWorld: 1650 },
+    { id: 'shard_02', type: 'shard', xRatio: 0.22, yWorld: 1500, color: Colors.secondary },
+    { id: 'coin_02', type: 'coin', xRatio: 0.5, yWorld: 1750 },
 
     // Turn 3 Shard & Coin
-    { id: 'shard_03', type: 'shard', xRatio: 0.8, yWorld: 1000, color: Colors.warning },
-    { id: 'coin_03', type: 'coin', xRatio: 0.45, yWorld: 1250 },
+    { id: 'shard_03', type: 'shard', xRatio: 0.8, yWorld: 1050, color: Colors.warning },
+    { id: 'coin_03', type: 'coin', xRatio: 0.45, yWorld: 1300 },
 
     // Turn 4 Shard & Coin
-    { id: 'shard_04', type: 'shard', xRatio: 0.18, yWorld: 630, color: Colors.primary },
-    { id: 'coin_04', type: 'coin', xRatio: 0.6, yWorld: 850 },
+    { id: 'shard_04', type: 'shard', xRatio: 0.18, yWorld: 650, color: Colors.primary },
+    { id: 'coin_04', type: 'coin', xRatio: 0.6, yWorld: 880 },
 
     // Turn 5 Shard & Final Straight Coins
-    { id: 'shard_05', type: 'shard', xRatio: 0.7, yWorld: 330, color: Colors.secondary },
-    { id: 'coin_05', type: 'coin', xRatio: 0.5, yWorld: 480 },
-    { id: 'coin_06', type: 'coin', xRatio: 0.5, yWorld: 200 },
+    { id: 'shard_05', type: 'shard', xRatio: 0.72, yWorld: 330, color: Colors.secondary },
+    { id: 'coin_05', type: 'coin', xRatio: 0.5, yWorld: 500 },
+    { id: 'coin_06', type: 'coin', xRatio: 0.5, yWorld: 220 },
   ],
 };
 
@@ -107,8 +107,8 @@ export const INITIAL_LEVELS: ILevel[] = [
     unlocked: false,
     starsEarned: 0,
     highScore: 0,
-    trackLength: 3200,
-    startPosRatio: { x: 0.5, yWorld: 3000 },
+    trackLength: 3400,
+    startPosRatio: { x: 0.5, yWorld: 3200 },
     startAngle: 0,
     finishLineY: 120,
     anchors: [],
@@ -128,8 +128,8 @@ export const INITIAL_LEVELS: ILevel[] = [
     unlocked: false,
     starsEarned: 0,
     highScore: 0,
-    trackLength: 4000,
-    startPosRatio: { x: 0.5, yWorld: 3800 },
+    trackLength: 4200,
+    startPosRatio: { x: 0.5, yWorld: 4000 },
     startAngle: 0,
     finishLineY: 120,
     anchors: [],

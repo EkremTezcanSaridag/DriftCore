@@ -2,8 +2,8 @@ import { Vector2D } from '../../types/game';
 import { CyberCarState, DriftAnchor } from '../../types/physics';
 
 /**
- * DriftCore — 2D Cyber Sling-Drift Physics Engine
- * Computes straight line motion, circular orbit drift dynamics, and tangential release mechanics.
+ * DriftCore — Ultra-Responsive 2D Sling-Drift Physics Engine
+ * Features elastic hook tethering, drift oversteer angle, dynamic angular momentum and snappy tangential launch.
  */
 export class DriftPhysicsSystem {
   /**
@@ -12,7 +12,7 @@ export class DriftPhysicsSystem {
   public updateStraightMotion(car: CyberCarState, deltaTime: number): CyberCarState {
     const angleRad = (car.angle * Math.PI) / 180;
     const vx = Math.sin(angleRad) * car.speed;
-    const vy = -Math.cos(angleRad) * car.speed; // UP is negative Y in 2D canvas
+    const vy = -Math.cos(angleRad) * car.speed; // UP is negative Y
 
     return {
       ...car,
@@ -25,7 +25,7 @@ export class DriftPhysicsSystem {
   }
 
   /**
-   * Find the closest anchor within active hook reach range
+   * Find the closest anchor within active reach range
    */
   public findBestAnchor(carPos: Vector2D, anchors: DriftAnchor[]): DriftAnchor | null {
     let closestAnchor: DriftAnchor | null = null;
@@ -51,10 +51,10 @@ export class DriftPhysicsSystem {
   public attachHook(car: CyberCarState, anchor: DriftAnchor): CyberCarState {
     const dx = car.position.x - anchor.position.x;
     const dy = car.position.y - anchor.position.y;
-    const radius = Math.max(25, Math.sqrt(dx * dx + dy * dy));
+    const radius = Math.max(30, Math.sqrt(dx * dx + dy * dy));
     const initialOrbitAngle = Math.atan2(dy, dx);
 
-    // Determine orbit rotation direction (clockwise vs counter-clockwise) via 2D cross product
+    // Determine orbit rotation direction via 2D cross product
     const angleRad = (car.angle * Math.PI) / 180;
     const headingVx = Math.sin(angleRad);
     const headingVy = -Math.cos(angleRad);
@@ -73,21 +73,29 @@ export class DriftPhysicsSystem {
   }
 
   /**
-   * Update circular orbit drift motion around active anchor
+   * Update circular orbit drift motion with oversteer angle and centripetal tension
    */
   public updateOrbitMotion(car: CyberCarState, anchor: DriftAnchor, deltaTime: number): CyberCarState {
-    const angularSpeed = (car.speed / Math.max(20, car.orbitRadius)) * car.orbitDirection;
+    // Angular speed inversely proportional to radius with higher torque
+    const angularSpeed = (car.speed / Math.max(25, car.orbitRadius)) * car.orbitDirection * 1.05;
     const newOrbitAngle = car.orbitAngle + angularSpeed * deltaTime;
 
-    const newX = anchor.position.x + Math.cos(newOrbitAngle) * car.orbitRadius;
-    const newY = anchor.position.y + Math.sin(newOrbitAngle) * car.orbitRadius;
+    // Slight elastic tether contraction for snappy drift feel
+    const newRadius = Math.max(35, car.orbitRadius - 10 * deltaTime);
 
-    // Tangent heading angle perpendicular to radius
+    const newX = anchor.position.x + Math.cos(newOrbitAngle) * newRadius;
+    const newY = anchor.position.y + Math.sin(newOrbitAngle) * newRadius;
+
+    // Tangent angle perpendicular to radius
     const tangentAngleRad = newOrbitAngle + (car.orbitDirection > 0 ? Math.PI / 2 : -Math.PI / 2);
-    let newCarAngle = (tangentAngleRad * 180) / Math.PI + 90;
-    newCarAngle = ((newCarAngle % 360) + 360) % 360;
+    let baseAngleDeg = (tangentAngleRad * 180) / Math.PI + 90;
+    baseAngleDeg = ((baseAngleDeg % 360) + 360) % 360;
 
-    const angleRad = (newCarAngle * Math.PI) / 180;
+    // Add +12° drift oversteer tail-kick angle for visual/physics juiciness
+    const driftOversteer = car.orbitDirection * 14;
+    const visualCarAngle = ((baseAngleDeg + driftOversteer % 360) + 360) % 360;
+
+    const angleRad = (baseAngleDeg * Math.PI) / 180;
     const vx = Math.sin(angleRad) * car.speed;
     const vy = -Math.cos(angleRad) * car.speed;
 
@@ -95,19 +103,31 @@ export class DriftPhysicsSystem {
       ...car,
       position: { x: newX, y: newY },
       velocity: { x: vx, y: vy },
-      angle: newCarAngle,
+      angle: visualCarAngle,
+      orbitRadius: newRadius,
       orbitAngle: newOrbitAngle,
     };
   }
 
   /**
-   * Release hook and transition back to straight tangential flight
+   * Release hook and launch tangentially with snappy forward impulse
    */
   public releaseHook(car: CyberCarState): CyberCarState {
+    // Realign velocity vector with heading upon release
+    const tangentAngleRad = car.orbitAngle + (car.orbitDirection > 0 ? Math.PI / 2 : -Math.PI / 2);
+    let launchAngle = (tangentAngleRad * 180) / Math.PI + 90;
+    launchAngle = ((launchAngle % 360) + 360) % 360;
+
+    const angleRad = (launchAngle * Math.PI) / 180;
+    const vx = Math.sin(angleRad) * car.speed;
+    const vy = -Math.cos(angleRad) * car.speed;
+
     return {
       ...car,
       isHooked: false,
       activeAnchorId: null,
+      angle: launchAngle,
+      velocity: { x: vx, y: vy },
     };
   }
 }
